@@ -1,0 +1,2190 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Futebol Arena Saae — Controle de Mensalidade</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<style>
+  :root{
+    --pitch-dark:#0B3D2E;
+    --pitch:#15503B;
+    --pitch-light:#1F6B4C;
+    --chalk:#F3F1E7;
+    --chalk-dim:#C9D6CC;
+    --gold:#D9A441;
+    --red-card:#C1443C;
+    --green-card:#4CAF6D;
+    --line: rgba(243,241,231,0.14);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      repeating-linear-gradient(90deg, var(--line) 0 1px, transparent 1px 80px),
+      linear-gradient(180deg, var(--pitch-dark) 0%, var(--pitch) 60%, var(--pitch-dark) 100%);
+    color:var(--chalk);
+    font-family:'IBM Plex Sans', sans-serif;
+    min-height:100vh;
+    padding:0 0 60px;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:28px 18px;}
+
+  /* HEADER */
+  header{text-align:center;margin-bottom:22px;position:relative;}
+  .crest{
+    width:64px;height:64px;margin:0 auto 10px;
+    border:3px solid var(--gold);
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Bebas Neue',sans-serif;
+    font-size:20px;letter-spacing:0.5px;
+    color:var(--gold);
+    background:radial-gradient(circle at 35% 30%, var(--pitch-light), var(--pitch-dark));
+  }
+  h1{
+    font-family:'Bebas Neue',sans-serif;
+    font-size:34px;letter-spacing:1.5px;margin:0;
+    color:var(--chalk);
+  }
+  .subtitle{color:var(--chalk-dim);font-size:13px;letter-spacing:.5px;margin-top:2px;}
+
+  /* SCOREBOARD */
+  .scoreboard{
+    display:grid;grid-template-columns:1fr 1fr 1fr;
+    background:var(--pitch-dark);
+    border:1px solid var(--line);
+    border-radius:10px;
+    overflow:hidden;
+    margin:22px 0;
+  }
+  .score-cell{padding:14px 8px;text-align:center;border-right:1px solid var(--line);}
+  .score-cell:last-child{border-right:none;}
+  .score-num{font-family:'Space Mono',monospace;font-weight:700;font-size:22px;}
+  .score-label{font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--chalk-dim);margin-top:2px;}
+  .score-num.green{color:var(--green-card);}
+  .score-num.gold{color:var(--gold);}
+
+  /* CONTROLS BAR */
+  .controls{
+    display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+    margin-bottom:18px;
+  }
+  select, input{
+    background:var(--pitch-dark);
+    border:1px solid var(--line);
+    color:var(--chalk);
+    padding:9px 12px;
+    border-radius:7px;
+    font-family:'IBM Plex Sans',sans-serif;
+    font-size:14px;
+  }
+  select{cursor:pointer;}
+  .controls .month-select{
+    font-family:'Space Mono',monospace;font-weight:700;
+    color-scheme:dark;
+    min-width:120px;
+  }
+  .controls .month-select::-webkit-calendar-picker-indicator{
+    filter:invert(75%) sepia(40%) saturate(400%) hue-rotate(1deg);
+    cursor:pointer;
+  }
+  .fee-field{display:flex;align-items:center;gap:6px;background:var(--pitch-dark);border:1px solid var(--line);border-radius:7px;padding:0 4px 0 10px;}
+  .fee-field input{border:none;background:transparent;padding:9px 4px;width:80px;}
+  .fee-tag{font-size:11px;color:var(--chalk-dim);letter-spacing:.5px;white-space:nowrap;}
+  .per-player-tag{
+    font-family:'Space Mono',monospace;font-size:12px;font-weight:700;
+    color:var(--gold);
+    background:rgba(217,164,65,0.1);
+    border:1px solid rgba(217,164,65,0.3);
+    padding:8px 10px;border-radius:7px;
+    white-space:nowrap;
+  }
+  .spacer{flex:1;}
+  button{
+    cursor:pointer;
+    font-family:'IBM Plex Sans',sans-serif;
+    font-weight:600;
+    border:none;
+    border-radius:7px;
+    padding:9px 14px;
+    font-size:13px;
+  }
+  .btn-gold{background:var(--gold);color:var(--pitch-dark);}
+  .btn-gold:hover{filter:brightness(1.08);}
+  .btn-ghost{background:transparent;color:var(--chalk-dim);border:1px solid var(--line);}
+  .btn-ghost:hover{color:var(--chalk);border-color:var(--chalk-dim);}
+  .caixa-btn{
+    font-family:'Space Mono',monospace;font-weight:700;
+    color:var(--gold) !important;
+    border-color:rgba(217,164,65,0.35) !important;
+  }
+  .caixa-btn:hover{border-color:var(--gold) !important;}
+  .avulso-btn{
+    font-family:'Space Mono',monospace;font-weight:700;
+    color:#6BAED6 !important;
+    border-color:rgba(107,174,214,0.35) !important;
+  }
+  .avulso-btn:hover{border-color:#6BAED6 !important;}
+
+  .pix-row{
+    display:flex;align-items:center;gap:8px;
+    margin-bottom:14px;
+    font-size:12px;
+  }
+  .pix-label{color:var(--chalk-dim);white-space:nowrap;}
+  .pix-row input{
+    flex:1;min-width:0;
+    font-family:'Space Mono',monospace;
+    font-size:12px;
+    padding:7px 10px;
+  }
+
+  /* ADD PLAYER FORM */
+  .add-form{
+    display:none;
+    background:var(--pitch-dark);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:16px;
+    margin-bottom:18px;
+    gap:10px;
+    grid-template-columns:1fr 1fr;
+  }
+  .add-form.open{display:grid;}
+  .add-form input{width:100%;}
+  .add-form .full{grid-column:1/-1;}
+  .field-label{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--chalk-dim);margin-bottom:4px;display:block;}
+
+  /* ROSTER */
+  .roster{display:flex;flex-direction:column;gap:8px;}
+  .player-row{
+    display:flex;align-items:center;gap:12px;
+    background:var(--pitch-dark);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:10px 12px;
+  }
+  .jersey{
+    flex-shrink:0;
+    width:36px;height:36px;border-radius:50%;
+    background:var(--pitch-light);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Space Mono',monospace;font-weight:700;font-size:14px;
+    border:1.5px solid var(--line);
+  }
+  .player-info{flex:1;min-width:0;}
+  .player-name{font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .player-phone{font-size:11px;color:var(--chalk-dim);font-family:'Space Mono',monospace;}
+
+  .player-select-check{
+    width:16px;height:16px;flex-shrink:0;cursor:pointer;
+    accent-color:var(--gold);
+  }
+
+  .selection-bar{
+    display:flex;align-items:center;justify-content:space-between;
+    background:rgba(217,164,65,0.1);
+    border:1px solid rgba(217,164,65,0.3);
+    border-radius:8px;
+    padding:8px 12px;margin-bottom:10px;
+    font-size:12px;color:var(--gold);
+  }
+  .card-status{
+    font-family:'Space Mono',monospace;
+    font-size:10px;font-weight:700;letter-spacing:.5px;
+    padding:5px 8px;border-radius:4px;
+    cursor:pointer;
+    text-transform:uppercase;
+    width:14px;height:20px;
+    display:flex;align-items:center;justify-content:center;
+    border-radius:3px;
+    flex-shrink:0;
+  }
+  .card-status.pago{background:var(--green-card);color:#0B2E1D;width:auto;padding:5px 10px;}
+  .card-status.pendente{background:var(--gold);color:var(--pitch-dark);width:auto;padding:5px 10px;}
+  .card-status.atrasado{background:var(--red-card);color:#2E0B0B;width:auto;padding:5px 10px;}
+  .icon-btn{
+    background:transparent;border:1px solid var(--line);
+    color:var(--chalk-dim);
+    width:34px;height:34px;border-radius:7px;
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;padding:0;
+  }
+  .icon-btn:hover{color:var(--green-card);border-color:var(--green-card);}
+  .icon-btn.remove:hover{color:var(--red-card);border-color:var(--red-card);}
+
+  .empty{
+    text-align:center;padding:40px 20px;color:var(--chalk-dim);
+    border:1px dashed var(--line);border-radius:10px;
+  }
+
+  .archived-toggle{
+    margin-top:14px;font-size:12px;color:var(--chalk-dim);
+    cursor:pointer;user-select:none;padding:6px 2px;
+  }
+  .archived-toggle:hover{color:var(--chalk);}
+  .archived-list{
+    flex-direction:column;gap:6px;margin-top:6px;
+  }
+  .archived-row{
+    display:flex;justify-content:space-between;align-items:center;
+    font-size:13px;padding:8px 12px;
+    background:rgba(243,241,231,0.03);
+    border:1px solid var(--line);
+    border-radius:8px;
+    opacity:0.75;
+  }
+  .archived-row .rn{font-size:11px;color:var(--chalk-dim);font-family:'Space Mono',monospace;}
+
+  .review-row{
+    display:flex;align-items:center;gap:10px;
+    font-size:13px;padding:9px 12px;
+    background:rgba(243,241,231,0.03);
+    border:1px solid var(--line);
+    border-radius:8px;
+    margin-bottom:6px;
+  }
+  .review-row.is-removed{opacity:0.6;}
+  .review-row .review-name{flex:1;min-width:0;}
+  .review-row .review-name .n{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .review-row .review-name .badge{font-size:10px;font-family:'Space Mono',monospace;}
+  .review-row .review-name .badge.ativo{color:var(--green-card);}
+  .review-row .review-name .badge.removido{color:var(--gold);}
+  .review-row input[type="month"]{
+    width:130px;font-size:12px;padding:6px 8px;flex-shrink:0;
+  }
+  .review-row .icon-btn{width:30px;height:30px;flex-shrink:0;}
+
+  .footer-note{
+    text-align:center;font-size:11px;color:var(--chalk-dim);
+    margin-top:28px;line-height:1.6;
+  }
+  .footer-note a{color:var(--gold);}
+
+  .conn-status{
+    text-align:center;font-size:11px;font-family:'Space Mono',monospace;
+    padding:6px 10px;border-radius:6px;margin-bottom:10px;
+    min-height:14px;
+  }
+  .conn-status.ok{background:rgba(76,175,109,0.1);color:var(--green-card);}
+  .conn-status.warn{background:rgba(217,164,65,0.1);color:var(--gold);}
+  .conn-status.err{background:rgba(193,68,60,0.12);color:var(--red-card);font-weight:600;}
+
+  .auth-bar{
+    display:flex;align-items:center;justify-content:center;gap:10px;
+    font-size:12px;color:var(--chalk-dim);margin-bottom:14px;
+    flex-wrap:wrap;
+  }
+  .auth-bar .editor-tag{color:var(--green-card);font-weight:600;}
+  .auth-bar .viewer-tag{color:var(--gold);}
+
+  .view-gate{
+    display:flex;align-items:center;justify-content:center;
+    padding:40px 16px;
+  }
+  .view-gate-box{
+    text-align:center;max-width:360px;
+    background:var(--pitch-dark);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:32px 24px;
+  }
+  .view-gate-icon{font-size:36px;margin-bottom:10px;}
+  .view-gate-box h2{
+    font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:1px;
+    margin:0 0 10px;color:var(--chalk);
+  }
+  .view-gate-box p{
+    font-size:13px;color:var(--chalk-dim);line-height:1.5;
+    margin:0 0 20px;
+  }
+
+  body.viewer-mode .edit-only{
+    pointer-events:none !important;
+    opacity:0.35 !important;
+    filter:grayscale(0.4);
+  }
+
+  @media (max-width:480px){
+    h1{font-size:26px;}
+    .add-form{grid-template-columns:1fr;}
+    .player-phone{display:none;}
+  }
+
+  /* REPORT MODAL */
+  .modal-overlay{
+    display:none;
+    position:fixed;inset:0;
+    background:rgba(6,20,14,0.72);
+    align-items:flex-start;justify-content:center;
+    padding:24px 14px;
+    z-index:50;
+    overflow-y:auto;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal{
+    background:var(--pitch-dark);
+    border:1px solid var(--line);
+    border-radius:12px;
+    max-width:520px;width:100%;
+    padding:22px;
+    color:var(--chalk);
+  }
+  .modal-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;}
+  .modal-eyebrow{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin-bottom:2px;}
+  .modal h2{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:1px;margin:0;}
+
+  .report-summary{
+    display:grid;grid-template-columns:repeat(3,1fr);
+    gap:8px;margin-bottom:18px;
+  }
+  .report-summary .cell{
+    background:rgba(243,241,231,0.04);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:10px 8px;text-align:center;
+  }
+  .report-summary .cell .n{font-family:'Space Mono',monospace;font-weight:700;font-size:18px;}
+  .report-summary .cell .l{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--chalk-dim);margin-top:2px;}
+
+  .report-section{margin-bottom:14px;}
+  .report-section-title{
+    font-family:'Space Mono',monospace;font-size:12px;font-weight:700;
+    letter-spacing:.5px;margin-bottom:6px;
+  }
+  .green-title{color:var(--green-card);}
+  .gold-title{color:var(--gold);}
+  .red-title{color:var(--red-card);}
+  .hist-title{color:#E08A3C;}
+  .hist-row{
+    display:flex;justify-content:space-between;align-items:baseline;
+    gap:8px;font-size:13px;padding:6px 10px;
+    background:rgba(224,138,60,0.08);
+    border:1px solid rgba(224,138,60,0.25);
+    border-radius:6px;
+  }
+  .hist-row .hist-months{font-size:11px;color:var(--chalk-dim);text-align:right;}
+  .hist-row-detailed{flex-direction:column;align-items:stretch;gap:3px;}
+  .hist-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
+  .hist-total{color:#E08A3C !important;font-weight:700;white-space:nowrap;}
+  .hist-row-detailed .hist-months{text-align:left;font-family:'Space Mono',monospace;}
+  .hist-grand-total{
+    justify-content:space-between;font-weight:700;
+    border:1.5px solid rgba(224,138,60,0.4);
+    background:rgba(224,138,60,0.14);
+    margin-top:2px;
+  }
+  .hist-grand-total .rn{color:#E08A3C;font-weight:700;}
+  .report-list{display:flex;flex-direction:column;gap:4px;}
+  .report-row{
+    display:flex;justify-content:space-between;
+    font-size:13px;padding:6px 10px;
+    background:rgba(243,241,231,0.03);
+    border-radius:6px;
+  }
+  .report-row .rn{color:var(--chalk-dim);font-family:'Space Mono',monospace;font-size:11px;}
+  .report-empty{font-size:12px;color:var(--chalk-dim);padding:4px 10px;font-style:italic;}
+
+  .atrasado-row{flex-direction:column;gap:3px;align-items:stretch;}
+  .atrasado-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
+  .atrasado-total{color:var(--red-card) !important;font-weight:700;white-space:nowrap;}
+  .atrasado-months{font-size:11px;color:var(--chalk-dim);font-family:'Space Mono',monospace;}
+  .atrasado-grand-total{
+    justify-content:space-between;font-weight:700;
+    border:1.5px solid rgba(193,68,60,0.35);
+    background:rgba(193,68,60,0.08);
+    margin-top:2px;
+  }
+  .atrasado-grand-total .rn{color:var(--red-card);font-weight:700;}
+
+  .modal-actions{display:flex;gap:8px;margin-top:18px;}
+
+  .caixa-saldo{
+    text-align:center;
+    background:rgba(217,164,65,0.08);
+    border:1px solid rgba(217,164,65,0.3);
+    border-radius:10px;
+    padding:14px;
+    margin-bottom:16px;
+  }
+  .caixa-saldo-label{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--chalk-dim);}
+  .caixa-saldo-value{font-family:'Space Mono',monospace;font-weight:700;font-size:28px;color:var(--gold);margin-top:2px;}
+  .caixa-saldo-value.negative{color:var(--red-card);}
+
+  .caixa-add-form{margin-bottom:18px;}
+  .caixa-tipo-toggle{display:flex;gap:8px;}
+  .caixa-tipo-btn{
+    flex:1;padding:10px;border-radius:7px;
+    border:1.5px solid var(--line);background:var(--pitch-dark);
+    color:var(--chalk-dim);font-family:'IBM Plex Sans',sans-serif;
+    font-weight:600;font-size:14px;cursor:pointer;
+  }
+  .caixa-tipo-btn.active[data-tipo="entrada"]{
+    border-color:var(--green-card);color:var(--green-card);background:rgba(76,175,109,0.1);
+  }
+  .caixa-tipo-btn.active[data-tipo="saida"]{
+    border-color:var(--red-card);color:var(--red-card);background:rgba(193,68,60,0.1);
+  }
+  .gold-title-screen{
+    font-family:'Space Mono',monospace;font-size:12px;font-weight:700;
+    letter-spacing:.5px;margin-bottom:6px;color:var(--gold);
+  }
+  .caixa-row{
+    display:flex;justify-content:space-between;align-items:center;
+    gap:8px;font-size:13px;padding:8px 10px;
+    background:rgba(243,241,231,0.03);
+    border-radius:6px;
+  }
+  .caixa-row .caixa-info{display:flex;flex-direction:column;min-width:0;}
+  .caixa-row .caixa-desc{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .caixa-row .caixa-meta{font-size:10px;color:var(--chalk-dim);font-family:'Space Mono',monospace;}
+  .caixa-row .caixa-val{font-family:'Space Mono',monospace;font-weight:700;flex-shrink:0;}
+  .caixa-row .caixa-val.pos{color:var(--green-card);}
+  .caixa-row .caixa-val.neg{color:var(--red-card);}
+  .caixa-row .icon-btn{width:26px;height:26px;flex-shrink:0;}
+
+  .caixa-hist-row{
+    display:flex;justify-content:space-between;align-items:center;
+    gap:8px;font-size:13px;padding:6px 10px;
+    background:rgba(243,241,231,0.03);
+    border-radius:6px;
+  }
+  .caixa-hist-info{display:flex;flex-direction:column;min-width:0;}
+  .caixa-hist-desc{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .caixa-hist-val{font-family:'Space Mono',monospace;font-weight:700;flex-shrink:0;}
+  .caixa-hist-val.pos{color:var(--green-card);}
+  .caixa-hist-val.neg{color:var(--red-card);}
+
+  @media print{
+    @page{ margin: 8mm; }
+    html, body{
+      background:#fff !important;
+      color:#111 !important;
+      height:auto !important;
+    }
+    header, .scoreboard, .controls, .add-form, .roster, .footer-note, .auth-bar, .selection-bar, .view-gate{
+      display:none !important;
+    }
+    .wrap{
+      padding:0 !important;
+      max-width:100% !important;
+      margin:0 !important;
+    }
+    .modal-overlay{
+      display:none !important;
+    }
+    .modal-overlay.open{
+      position:static !important;
+      inset:auto !important;
+      padding:0 !important;
+      background:none !important;
+      display:block !important;
+      overflow:visible !important;
+    }
+    .modal{
+      position:static !important;
+      border:none !important;
+      max-width:100% !important;
+      width:100% !important;
+      padding:0 !important;
+      margin:0 !important;
+      background:#fff !important;
+      color:#111 !important;
+    }
+    .modal-header{
+      margin-bottom:10px !important;
+      padding-bottom:8px !important;
+      border-bottom:2px solid #111 !important;
+    }
+    .modal-eyebrow{color:#8a6b1f !important;font-size:9px !important;}
+    .modal h2{color:#111 !important;font-size:20px !important;margin:0 !important;}
+    .modal-actions{display:none !important;}
+    #cover-shortfall-wrap{display:none !important;}
+    .icon-btn{display:none !important;}
+    #close-report-btn{display:none !important;}
+
+    .report-summary{grid-template-columns:repeat(3,1fr) !important;gap:5px !important;margin-bottom:12px !important;}
+    .report-summary .cell{
+      background:#f4f4f0 !important;
+      border:1.5px solid #999 !important;
+      color:#111 !important;
+      break-inside:avoid;
+      padding:6px 4px !important;
+    }
+    .report-summary .cell .n{color:#111 !important;font-size:14px !important;}
+    .report-summary .cell .l{color:#555 !important;font-size:8px !important;margin-top:0 !important;}
+
+    .report-section{
+      break-inside:avoid;
+      margin-bottom:10px !important;
+      border:1.5px solid #999 !important;
+      border-radius:4px !important;
+      padding:8px !important;
+    }
+    .report-section-title{
+      font-size:11px !important;
+      margin-bottom:5px !important;
+      padding-bottom:4px !important;
+      border-bottom:1px solid #ccc !important;
+    }
+    .green-title{color:#2f7a45 !important;}
+    .gold-title{color:#8a6b1f !important;}
+    .red-title{color:#a4342c !important;}
+    .hist-title{color:#b3641a !important;}
+    .hist-row{
+      background:#faf1e6 !important;
+      border:1px solid #e0b98a !important;
+      color:#111 !important;
+      break-inside:avoid;
+    }
+    .hist-row .hist-months{color:#555 !important;}
+    .hist-total{color:#b3641a !important;}
+    .hist-grand-total{
+      border:1.5px solid #b3641a !important;
+      background:#fbecda !important;
+    }
+    .hist-grand-total .rn{color:#b3641a !important;}
+    .caixa-hist-row{
+      background:#f7f7f4 !important;
+      border:1px solid #e2e2dc !important;
+      color:#111 !important;
+      break-inside:avoid;
+    }
+    .caixa-hist-val.pos{color:#2f7a45 !important;}
+    .caixa-hist-val.neg{color:#a4342c !important;}
+
+    .report-list{gap:3px !important;}
+    .report-row{
+      background:#f7f7f4 !important;
+      border:1px solid #b5b5ac !important;
+      color:#111 !important;
+      break-inside:avoid;
+      padding:4px 8px !important;
+      font-size:11px !important;
+    }
+    .report-row .rn{color:#555 !important;}
+    .report-empty{color:#777 !important;padding:2px 8px !important;font-size:11px !important;}
+    .atrasado-total{color:#a4342c !important;}
+    .atrasado-months{color:#555 !important;}
+    .atrasado-grand-total{
+      border:1.5px solid #a4342c !important;
+      background:#faeceb !important;
+    }
+    .atrasado-grand-total .rn{color:#a4342c !important;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="crest">FAS</div>
+    <h1>FUTEBOL ARENA SAAE</h1>
+    <div class="subtitle">controle de mensalidade do futebol</div>
+  </header>
+
+  <div class="auth-bar" id="auth-bar">
+    <span id="auth-status">Verificando login…</span>
+    <button class="btn-ghost" id="auth-btn" style="display:none;">Entrar com Google</button>
+    <button class="btn-ghost edit-only" id="backup-export-btn" title="Baixar uma cópia de segurança de todos os dados">⬇️ Backup</button>
+    <button class="btn-ghost edit-only" id="backup-import-btn" title="Restaurar dados a partir de um arquivo de backup">⬆️ Restaurar</button>
+    <input type="file" id="backup-file-input" accept="application/json" style="display:none;">
+  </div>
+
+  <div class="view-gate" id="view-gate" style="display:none;">
+    <div class="view-gate-box">
+      <div class="view-gate-icon" id="gate-icon">🔒</div>
+      <h2 id="gate-title">Login necessário</h2>
+      <p id="gate-text">Esse app é restrito aos organizadores autorizados. Entre com a conta Google liberada pra continuar.</p>
+      <button class="btn-gold" id="gate-login-btn">Entrar com Google</button>
+    </div>
+  </div>
+
+  <div id="main-app-content" style="display:none;">
+  <div class="scoreboard">
+    <div class="score-cell">
+      <div class="score-num green" id="stat-arrecadado">R$ 0</div>
+      <div class="score-label">Arrecadado</div>
+    </div>
+    <div class="score-cell">
+      <div class="score-num gold" id="stat-pendentes">0</div>
+      <div class="score-label">Pendentes</div>
+    </div>
+    <div class="score-cell">
+      <div class="score-num" id="stat-total">0</div>
+      <div class="score-label">Jogadores</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <input type="month" id="month-select" class="month-select">
+    <div class="fee-field">
+      <span class="fee-tag">Quadra R$</span>
+      <input type="number" id="fee-input" class="edit-only" placeholder="750" style="width:90px;" min="0" step="10">
+    </div>
+    <div class="per-player-tag" id="per-player-tag">R$ 0 / pessoa</div>
+    <button class="btn-ghost caixa-btn" id="caixa-btn">💰 Caixa: R$ 0</button>
+    <button class="btn-ghost avulso-btn" id="avulso-btn">🎽 Avulsos: R$ 0</button>
+    <div class="spacer"></div>
+    <button class="btn-ghost" id="select-all-btn">☑️ Selecionar todos</button>
+    <button class="btn-ghost" id="report-btn">📊 Relatório</button>
+    <button class="btn-ghost edit-only" id="toggle-form-btn">+ Jogador</button>
+    <button class="btn-ghost edit-only" id="review-players-btn">🔍 Revisar Jogadores</button>
+  </div>
+
+  <div class="pix-row">
+    <span class="pix-label">🔑 Chave Pix p/ cobrança:</span>
+    <input type="text" id="pix-input" class="edit-only" placeholder="Chave Pix">
+  </div>
+
+  <div class="add-form edit-only" id="add-form">
+    <div>
+      <span class="field-label">Nome</span>
+      <input type="text" id="new-name" placeholder="Nome do jogador">
+    </div>
+    <div>
+      <span class="field-label">Nº da camisa</span>
+      <input type="number" id="new-number" placeholder="10" min="0" max="99">
+    </div>
+    <div>
+      <span class="field-label">WhatsApp (com DDD, ex: 11987654321)</span>
+      <input type="text" id="new-phone" placeholder="11987654321">
+    </div>
+    <div>
+      <span class="field-label">Jogador desde</span>
+      <input type="month" id="new-joined">
+    </div>
+    <div class="full" style="display:flex;gap:8px;">
+      <button class="btn-gold" id="save-player-btn">Adicionar</button>
+      <button class="btn-ghost" id="cancel-add-btn">Cancelar</button>
+    </div>
+  </div>
+
+  <div class="selection-bar" id="selection-bar" style="display:none;">
+    <span id="selection-count"></span>
+    <button class="btn-ghost edit-only" id="bulk-remove-btn" style="color:var(--red-card);border-color:rgba(193,68,60,0.4);">🗑️ Remover selecionados</button>
+    <button class="btn-ghost" id="clear-selection-btn">Limpar seleção</button>
+  </div>
+
+  <div class="roster" id="roster"></div>
+  <div id="archived-wrap"></div>
+
+  <div class="modal-overlay" id="report-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <div class="modal-eyebrow">Súmula financeira</div>
+          <h2 id="report-title">Relatório</h2>
+        </div>
+        <button class="icon-btn" id="close-report-btn" title="Fechar">✕</button>
+      </div>
+
+      <div class="report-summary" id="report-summary"></div>
+      <div id="cover-shortfall-wrap" style="margin-bottom:16px;"></div>
+
+      <div class="report-section">
+        <div class="report-section-title green-title">✔ Pagos</div>
+        <div id="report-pagos" class="report-list"></div>
+      </div>
+      <div class="report-section">
+        <div class="report-section-title gold-title">● Pendentes</div>
+        <div id="report-pendentes" class="report-list"></div>
+      </div>
+      <div class="report-section">
+        <div class="report-section-title red-title">✖ Atrasados</div>
+        <div id="report-atrasados" class="report-list"></div>
+      </div>
+
+      <div class="report-section" id="report-historico-section">
+        <div class="report-section-title hist-title">⏳ Devendo de meses anteriores</div>
+        <div id="report-historico" class="report-list"></div>
+      </div>
+
+      <div class="report-section" id="report-avulso-section">
+        <div class="report-section-title" style="color:#6BAED6;">🎽 Avulsos do mês</div>
+        <div id="report-avulso-list" class="report-list"></div>
+      </div>
+
+      <div class="report-section" id="report-caixa-hist-section">
+        <div class="report-section-title gold-title">💰 Histórico do Caixa Extra</div>
+        <div id="report-caixa-historico" class="report-list"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-gold" id="print-report-btn">Imprimir / Salvar PDF</button>
+        <button class="btn-ghost" id="copy-report-btn">Copiar texto</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="caixa-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <div class="modal-eyebrow">Fundo do grupo</div>
+          <h2>Caixa Extra</h2>
+        </div>
+        <button class="icon-btn" id="close-caixa-btn" title="Fechar">✕</button>
+      </div>
+
+      <div class="caixa-saldo">
+        <div class="caixa-saldo-label">Saldo disponível</div>
+        <div class="caixa-saldo-value" id="caixa-saldo-value">R$ 0,00</div>
+      </div>
+
+      <div class="add-form open caixa-add-form edit-only">
+        <div class="full">
+          <span class="field-label">Tipo de lançamento</span>
+          <div class="caixa-tipo-toggle">
+            <button type="button" class="caixa-tipo-btn active edit-only" id="caixa-tipo-entrada" data-tipo="entrada">➕ Entrada</button>
+            <button type="button" class="caixa-tipo-btn edit-only" id="caixa-tipo-saida" data-tipo="saida">➖ Saída</button>
+          </div>
+        </div>
+        <div>
+          <span class="field-label">Valor</span>
+          <input type="number" id="caixa-valor" placeholder="Ex: 50" min="0" step="0.01">
+        </div>
+        <div>
+          <span class="field-label">Jogador (opcional)</span>
+          <select id="caixa-jogador"><option value="">— nenhum —</option></select>
+        </div>
+        <div class="full">
+          <span class="field-label">Descrição</span>
+          <input type="text" id="caixa-descricao" placeholder="Ex: Pagou a mais, complemento da quadra...">
+        </div>
+        <div class="full" style="display:flex;gap:8px;">
+          <button class="btn-gold" id="add-caixa-btn">Lançar</button>
+        </div>
+      </div>
+
+      <div class="report-section">
+        <div class="report-section-title gold-title-screen">Histórico de lançamentos</div>
+        <div id="caixa-lista" class="report-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="review-overlay">
+    <div class="modal" style="max-width:640px;">
+      <div class="modal-header">
+        <div>
+          <div class="modal-eyebrow">Todos os jogadores cadastrados, ativos e removidos</div>
+          <h2>Revisar Jogadores</h2>
+        </div>
+        <button class="icon-btn" id="close-review-btn" title="Fechar">✕</button>
+      </div>
+
+      <div style="font-size:12px;color:var(--chalk-dim);margin-bottom:14px;">
+        Corrija o "Jogador desde" de quem estiver com a data errada — a mudança salva sozinha ao trocar o mês. Isso ajusta automaticamente o rateio e os relatórios de todos os meses.
+      </div>
+
+      <div id="review-list" class="report-list"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="avulso-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <div class="modal-eyebrow">Jogadores de fora do grupo — Mês selecionado</div>
+          <h2>Avulsos</h2>
+        </div>
+        <button class="icon-btn" id="close-avulso-btn" title="Fechar">✕</button>
+      </div>
+
+      <div class="caixa-saldo">
+        <div class="caixa-saldo-label">Arrecadado com avulsos no mês</div>
+        <div class="caixa-saldo-value" id="avulso-total-value">R$ 0,00</div>
+      </div>
+
+      <div class="add-form open caixa-add-form edit-only">
+        <div>
+          <span class="field-label">Nome</span>
+          <input type="text" id="avulso-nome" placeholder="Nome de quem jogou avulso">
+        </div>
+        <div>
+          <span class="field-label">Valor cobrado</span>
+          <input type="number" id="avulso-valor" placeholder="Ex: 30" min="0" step="0.01">
+        </div>
+        <div class="full">
+          <span class="field-label">WhatsApp (opcional, com DDD)</span>
+          <input type="text" id="avulso-phone" placeholder="11987654321">
+        </div>
+        <div class="full" style="display:flex;gap:8px;">
+          <button class="btn-gold" id="add-avulso-btn">Adicionar</button>
+        </div>
+      </div>
+
+      <div class="report-section">
+        <div class="report-section-title gold-title-screen" id="avulso-list-title">Avulsos do mês</div>
+        <div id="avulso-lista" class="report-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="conn-status" id="conn-status"></div>
+
+  <div class="footer-note">
+    Clique no cartão de status pra alternar Pago / Pendente / Atrasado.<br>
+    O botão de WhatsApp abre a conversa já com a mensagem de cobrança pronta.
+  </div>
+  </div>
+</div>
+
+<script>
+  window.addEventListener('DOMContentLoaded', ()=>{
+    const el = document.getElementById('conn-status');
+    setTimeout(()=>{
+      const ok = window.__firebaseReady === true;
+      el.textContent = ok ? '🟢 Conectado — dados compartilhados online' : '🟡 Rodando local — cole as chaves do Firebase pra sincronizar online';
+      el.className = 'conn-status ' + (ok ? 'ok' : 'warn');
+    }, 400);
+  });
+</script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBHsinb4Un19Nsbq4a-QyftzqTtV-vWREY",
+  authDomain: "futebol-arena-saae.firebaseapp.com",
+  databaseURL: "https://futebol-arena-saae-default-rtdb.firebaseio.com",
+  projectId: "futebol-arena-saae",
+  storageBucket: "futebol-arena-saae.firebasestorage.app",
+  messagingSenderId: "44476679134",
+  appId: "1:44476679134:web:951a18505a0b6a3624534f"
+};
+
+let firebaseReady = false;
+try{
+  if(firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith('COLE_AQUI')){
+    firebase.initializeApp(firebaseConfig);
+    firebaseReady = true;
+  } else {
+    console.warn('Firebase não configurado ainda — cole suas chaves no topo do arquivo. Rodando sem salvar online por enquanto.');
+  }
+}catch(e){
+  console.error('Erro ao iniciar Firebase:', e);
+}
+window.__firebaseReady = firebaseReady;
+
+const ALLOWED_EDITORS = [
+  'emersonneto89@gmail.com'
+];
+
+window.__isEditor = false;
+
+function updateAuthUI(user){
+  const statusEl = document.getElementById('auth-status');
+  const btnEl = document.getElementById('auth-btn');
+  const gateEl = document.getElementById('view-gate');
+  const contentEl = document.getElementById('main-app-content');
+  const gateIcon = document.getElementById('gate-icon');
+  const gateTitle = document.getElementById('gate-title');
+  const gateText = document.getElementById('gate-text');
+  const gateBtn = document.getElementById('gate-login-btn');
+
+  if(!firebaseReady){
+    statusEl.textContent = '';
+    btnEl.style.display = 'none';
+    gateEl.style.display = 'none';
+    contentEl.style.display = '';
+    return;
+  }
+
+  const email = user ? (user.email || '').toLowerCase() : null;
+  const isAllowed = email ? ALLOWED_EDITORS.map(e=>e.toLowerCase()).includes(email) : false;
+  window.__isEditor = isAllowed;
+
+  const backupExportBtn = document.getElementById('backup-export-btn');
+  const backupImportBtn = document.getElementById('backup-import-btn');
+  backupExportBtn.style.display = isAllowed ? '' : 'none';
+  backupImportBtn.style.display = isAllowed ? '' : 'none';
+
+  if(isAllowed){
+    statusEl.innerHTML = `👤 <span class="editor-tag">${email}</span>`;
+    btnEl.textContent = 'Sair';
+    btnEl.style.display = '';
+    btnEl.onclick = ()=> firebase.auth().signOut();
+    gateEl.style.display = 'none';
+    contentEl.style.display = '';
+    window.__bootApp();
+  } else {
+    statusEl.textContent = '';
+    btnEl.style.display = 'none';
+    contentEl.style.display = 'none';
+    gateEl.style.display = 'flex';
+    if(user){
+      gateIcon.textContent = '⛔';
+      gateTitle.textContent = 'Acesso não autorizado';
+      gateText.textContent = `A conta ${email} não está liberada pra acessar este app. Fale com o organizador se acha que isso é um engano.`;
+      gateBtn.textContent = 'Tentar com outra conta';
+      gateBtn.onclick = ()=> firebase.auth().signOut().then(()=>
+        firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e=>{
+          alert('Não foi possível entrar: ' + e.message);
+        })
+      );
+    } else {
+      gateIcon.textContent = '🔒';
+      gateTitle.textContent = 'Login necessário';
+      gateText.textContent = 'Esse app é restrito aos organizadores autorizados. Entre com a conta Google liberada pra continuar.';
+      gateBtn.textContent = 'Entrar com Google';
+      gateBtn.onclick = ()=> firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e=>{
+        alert('Não foi possível entrar: ' + e.message);
+      });
+    }
+  }
+  document.body.classList.toggle('viewer-mode', !window.__isEditor);
+  if(typeof window.__onAuthChange === 'function') window.__onAuthChange();
+}
+
+if(firebaseReady){
+  firebase.auth().onAuthStateChanged(updateAuthUI);
+} else {
+  document.addEventListener('DOMContentLoaded', ()=> updateAuthUI(null));
+}
+
+window.storage = {
+  async get(key, shared){
+    if(!firebaseReady) throw new Error('Firebase não configurado');
+    const snap = await firebase.database().ref('dados/' + key).once('value');
+    const value = snap.val();
+    if(value === null || value === undefined) throw new Error('Chave não encontrada');
+    return { key, value, shared: true };
+  },
+  async set(key, value, shared){
+    if(!firebaseReady) return null;
+    await firebase.database().ref('dados/' + key).set(value);
+    return { key, value, shared: true };
+  },
+  async delete(key, shared){
+    if(!firebaseReady) return null;
+    await firebase.database().ref('dados/' + key).remove();
+    return { key, deleted: true, shared: true };
+  }
+};
+</script>
+
+<script>
+(function(){
+  const STORAGE_KEY = 'pelada-fc-data';
+  let state = { players: [], paymentsByMonth: {}, courtTotal: 750, caixa: [], pixKey: '119963717973', avulsos: [] };
+
+  function isActiveInMonth(player, month){
+    const afterJoin = !player.joinedMonth || month >= player.joinedMonth;
+    const beforeLeft = !player.removido || !player.leftMonth || month < player.leftMonth;
+    return afterJoin && beforeLeft;
+  }
+  function activePlayersInMonth(month){
+    return state.players.filter(p => isActiveInMonth(p, month));
+  }
+
+  function perPlayerFee(month){
+    const m = month || currentMonth;
+    const total = Number(state.courtTotal) || 0;
+    const active = activePlayersInMonth(m);
+    if(!active.length || !total) return 0;
+    return Math.round((total / active.length) * 100) / 100;
+  }
+  let currentMonth = monthKey(new Date());
+  let selectedForReport = new Set();
+
+  function monthKey(d){
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+  }
+  function monthLabel(key){
+    const [y,m] = key.split('-');
+    const names = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    return names[parseInt(m,10)-1] + '/' + y;
+  }
+  function setMonthInputValue(){
+    document.getElementById('month-select').value = currentMonth;
+  }
+
+  async function load(){
+    try{
+      const res = await window.storage.get(STORAGE_KEY, false);
+      if(res && res.value){
+        state = JSON.parse(res.value);
+      }
+    }catch(e){
+      console.log('Sem dados salvos ainda, começando do zero.');
+    }
+    if(!state.courtTotal || isNaN(Number(state.courtTotal))){
+      if(state.fee && !isNaN(Number(state.fee)) && state.players && state.players.length){
+        state.courtTotal = Number(state.fee) * state.players.length;
+      } else {
+        state.courtTotal = 750;
+      }
+    }
+    delete state.fee;
+    const recordedMonths = Object.keys(state.paymentsByMonth || {}).sort();
+    const inferredJoin = recordedMonths.length ? recordedMonths[0] : nowMonthKey();
+    (state.players || []).forEach(p=>{
+      if(!p.joinedMonth) p.joinedMonth = inferredJoin;
+    });
+    if(!Array.isArray(state.caixa)) state.caixa = [];
+    if(!Array.isArray(state.avulsos)) state.avulsos = [];
+    if(!state.pixKey) state.pixKey = '119963717973';
+    document.getElementById('pix-input').value = state.pixKey;
+    document.getElementById('fee-input').value = state.courtTotal || 750;
+    setMonthInputValue();
+    render();
+    save();
+  }
+
+  async function save(){
+    state.updatedAt = Date.now();
+    try{
+      const result = await window.storage.set(STORAGE_KEY, JSON.stringify(state), false);
+      if(result === null) throw new Error('Firebase retornou vazio — grava não confirmada.');
+      setConnStatus(true);
+    }catch(e){
+      console.error('Erro ao salvar:', e);
+      setConnStatus(false, e);
+    }
+  }
+
+  function setConnStatus(ok, error){
+    const el = document.getElementById('conn-status');
+    if(!el) return;
+    if(ok){
+      el.textContent = '🟢 Conectado — dados compartilhados online';
+      el.className = 'conn-status ok';
+    } else {
+      el.textContent = '🔴 Não foi possível salvar — confira as Regras do Realtime Database no Firebase (precisam estar publicadas como leitura/escrita liberadas)';
+      el.className = 'conn-status err';
+    }
+  }
+
+  function nowMonthKey(){
+    return monthKey(new Date());
+  }
+
+  function isPaid(playerId, month){
+    const monthData = state.paymentsByMonth[month || currentMonth] || {};
+    const v = monthData[playerId];
+    return v === true || v === 'pago'; // 'pago' kept for legacy saved data
+  }
+  function requireEditor(){
+    if(window.__isEditor) return true;
+    alert('Só quem está logado com um e-mail autorizado pode editar. Clique em "Entrar com Google" no topo da página.');
+    return false;
+  }
+
+  function setPaid(playerId, paid){
+    if(!requireEditor()) return;
+    if(!state.paymentsByMonth[currentMonth]) state.paymentsByMonth[currentMonth] = {};
+    state.paymentsByMonth[currentMonth][playerId] = paid;
+    save();
+    render();
+  }
+  function togglePaid(playerId){
+    setPaid(playerId, !isPaid(playerId));
+  }
+  function getStatus(playerId, month){
+    const m = month || currentMonth;
+    if(isPaid(playerId, m)) return 'pago';
+    return m < nowMonthKey() ? 'atrasado' : 'pendente';
+  }
+
+  function waLink(player){
+    const fee = perPlayerFee();
+    const activeCount = activePlayersInMonth(currentMonth).length;
+    const overdue = overdueMonthsForPlayer(player.id);
+    const pixLine = state.pixKey ? `\n\n🔑 Chave Pix: ${state.pixKey}` : '';
+    let msg;
+    if(overdue.length > 0){
+      const mesesTxt = overdue.join(', ');
+      const totalDevido = (overdue.length * fee).toFixed(2);
+      msg = `Fala ${player.name}! ⚽ Você está com ${overdue.length} mensalidade${overdue.length>1?'s':''} em aberto (${mesesTxt}), totalizando R$ ${totalDevido}. Valor de cada mês: R$ ${fee.toFixed(2)} (rateio da quadra de R$ ${state.courtTotal} entre ${activeCount} jogadores). Dá pra regularizar?${pixLine}\n\nValeu!`;
+    } else {
+      msg = `Fala ${player.name}! ⚽ Lembrete da mensalidade do futebol de ${monthLabel(currentMonth)}: R$ ${fee.toFixed(2)} (rateio da quadra de R$ ${state.courtTotal} entre ${activeCount} jogadores).${pixLine}\n\nValeu!`;
+    }
+    const phone = (player.phone || '').replace(/\D/g,'');
+    const withCountry = phone.startsWith('55') ? phone : ('55' + phone);
+    return `https://wa.me/${withCountry}?text=${encodeURIComponent(msg)}`;
+  }
+
+  function render(){
+    const roster = document.getElementById('roster');
+    roster.innerHTML = '';
+    const activePlayers = activePlayersInMonth(currentMonth).filter(p => !p.removido);
+    if(state.players.length===0){
+      roster.innerHTML = '<div class="empty">Nenhum jogador ainda. Clique em "+ Jogador" pra começar a escalação.</div>';
+    } else if(activePlayers.length===0){
+      roster.innerHTML = '<div class="empty">Ninguém do grupo ainda fazia parte em ' + monthLabel(currentMonth) + '.</div>';
+    }
+    let arrecadado = caixaUsadoNoMes(currentMonth) + avulsosArrecadadoNoMes(currentMonth), pendentes = 0;
+    activePlayers.forEach(p=>{
+      const status = getStatus(p.id);
+      if(status==='pago') arrecadado += perPlayerFee();
+      if(status!=='pago') pendentes++;
+
+      const row = document.createElement('div');
+      row.className='player-row';
+      row.innerHTML = `
+        <input type="checkbox" class="player-select-check" data-select="${p.id}" ${selectedForReport.has(p.id)?'checked':''} title="Selecionar pra relatório filtrado">
+        <div class="jersey">${p.number ?? '–'}</div>
+        <div class="player-info">
+          <div class="player-name">${escapeHtml(p.name)}</div>
+          <div class="player-phone">${p.phone ? '+55 '+p.phone : 'sem whatsapp'}${p.joinedMonth ? ' · desde '+monthLabel(p.joinedMonth) : ''}</div>
+        </div>
+        <div class="card-status edit-only ${status}" data-id="${p.id}" title="Clique pra marcar pago/não pago">${statusLabel(status)}</div>
+        ${p.phone ? `<a class="icon-btn edit-only" href="${waLink(p)}" target="_blank" title="Cobrar no WhatsApp" data-wa-link="1">💬</a>` : ''}
+        <button class="icon-btn edit-only" data-edit="${p.id}" title="Editar jogador">✏️</button>
+        <button class="icon-btn remove edit-only" data-remove="${p.id}" title="Remover jogador">✕</button>
+      `;
+      roster.appendChild(row);
+    });
+
+    roster.querySelectorAll('[data-select]').forEach(el=>{
+      el.addEventListener('change', ()=>{
+        if(el.checked) selectedForReport.add(el.dataset.select);
+        else selectedForReport.delete(el.dataset.select);
+        updateSelectionUI();
+      });
+    });
+
+    roster.querySelectorAll('[data-wa-link]').forEach(el=>{
+      el.addEventListener('click', (e)=>{
+        if(!window.__isEditor){
+          e.preventDefault();
+          alert('Só quem está logado com um e-mail autorizado pode enviar cobrança pelo WhatsApp. Clique em "Entrar com Google" no topo da página.');
+        }
+      });
+    });
+
+    document.getElementById('stat-arrecadado').textContent = 'R$ ' + arrecadado.toFixed(2);
+    document.getElementById('stat-pendentes').textContent = pendentes;
+    document.getElementById('stat-total').textContent = activePlayers.length;
+    document.getElementById('per-player-tag').textContent = 'R$ ' + perPlayerFee().toFixed(2) + ' / pessoa';
+    const saldo = caixaSaldo();
+    const caixaBtn = document.getElementById('caixa-btn');
+    caixaBtn.textContent = '💰 Caixa: R$ ' + saldo.toFixed(2);
+    caixaBtn.style.color = saldo < 0 ? 'var(--red-card)' : '';
+    const avulsoBtn = document.getElementById('avulso-btn');
+    avulsoBtn.textContent = '🎽 Avulsos: R$ ' + avulsosArrecadadoNoMes(currentMonth).toFixed(2);
+
+    roster.querySelectorAll('.card-status').forEach(el=>{
+      el.addEventListener('click', ()=> togglePaid(el.dataset.id));
+    });
+    roster.querySelectorAll('[data-edit]').forEach(el=>{
+      el.addEventListener('click', ()=>{ if(requireEditor()) openEditPlayer(el.dataset.edit); });
+    });
+    roster.querySelectorAll('[data-remove]').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        if(!requireEditor()) return;
+        const p = state.players.find(pl => pl.id === el.dataset.remove);
+        if(!p) return;
+        const ok = confirm(`Remover ${p.name} do grupo?\n\nEle vai sumir da lista a partir de agora, mas o histórico de meses em que ele jogou e pagou continua aparecendo nos relatórios.`);
+        if(!ok) return;
+        p.removido = true;
+        p.leftMonth = nowMonthKey();
+        save(); render();
+      });
+    });
+    renderArchivedPlayers();
+    updateSelectionUI();
+  }
+
+  function updateSelectionUI(){
+    const bar = document.getElementById('selection-bar');
+    const count = selectedForReport.size;
+    const reportBtn = document.getElementById('report-btn');
+    const selectAllBtn = document.getElementById('select-all-btn');
+    const active = activePlayersInMonth(currentMonth).filter(p => !p.removido);
+    const allSelected = active.length > 0 && active.every(p => selectedForReport.has(p.id));
+    selectAllBtn.textContent = allSelected ? '⬜ Desmarcar todos' : '☑️ Selecionar todos';
+    if(count === 0){
+      bar.style.display = 'none';
+      reportBtn.textContent = '📊 Relatório';
+      return;
+    }
+    bar.style.display = 'flex';
+    reportBtn.textContent = `📊 Relatório (${count})`;
+    document.getElementById('selection-count').textContent =
+      `☑️ ${count} ${count===1?'jogador selecionado':'jogadores selecionados'} — o relatório vai sair só com essas pessoas`;
+  }
+
+  function renderReviewList(){
+    const listEl = document.getElementById('review-list');
+    const all = [...state.players].filter(p => !p.permanentlyDeleted).sort((a,b)=>{
+      const am = a.joinedMonth || '9999-99';
+      const bm = b.joinedMonth || '9999-99';
+      if(am !== bm) return am < bm ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+    if(all.length === 0){
+      listEl.innerHTML = '<div class="report-empty">Nenhum jogador cadastrado ainda.</div>';
+      return;
+    }
+    listEl.innerHTML = all.map(p => `
+      <div class="review-row ${p.removido ? 'is-removed' : ''}">
+        <div class="review-name">
+          <span class="n">${escapeHtml(p.name)}${p.number!=null ? ' #'+p.number : ''}</span>
+          <span class="badge ${p.removido ? 'removido' : 'ativo'}">${p.removido ? 'saiu em '+monthLabel(p.leftMonth) : 'ativo'}</span>
+        </div>
+        <input type="month" class="edit-only" data-review-joined="${p.id}" value="${p.joinedMonth || ''}">
+        ${p.removido
+          ? `<button class="icon-btn edit-only" data-review-reativar="${p.id}" title="Reativar">↩️</button>
+             <button class="icon-btn remove edit-only" data-review-excluir="${p.id}" title="Excluir definitivamente">🗑️</button>`
+          : `<button class="icon-btn remove edit-only" data-review-remover="${p.id}" title="Remover jogador">✕</button>`
+        }
+      </div>
+    `).join('');
+
+    listEl.querySelectorAll('[data-review-joined]').forEach(el=>{
+      el.addEventListener('change', ()=>{
+        if(!requireEditor()) return;
+        const p = state.players.find(pl => pl.id === el.dataset.reviewJoined);
+        if(p && el.value){
+          p.joinedMonth = el.value;
+          save(); render(); renderReviewList();
+        }
+      });
+    });
+    listEl.querySelectorAll('[data-review-reativar]').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        if(!requireEditor()) return;
+        const p = state.players.find(pl => pl.id === el.dataset.reviewReativar);
+        if(p){
+          p.removido = false;
+          delete p.leftMonth;
+          save(); render(); renderReviewList();
+        }
+      });
+    });
+    listEl.querySelectorAll('[data-review-excluir]').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        if(!requireEditor()) return;
+        const p = state.players.find(pl => pl.id === el.dataset.reviewExcluir);
+        if(!p) return;
+        const ok = confirm(`Excluir ${p.name} definitivamente?\n\nOs relatórios dos meses em que ele participou continuam mostrando ele normalmente.`);
+        if(!ok) return;
+        p.permanentlyDeleted = true;
+        save(); render(); renderReviewList();
+      });
+    });
+    listEl.querySelectorAll('[data-review-remover]').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        if(!requireEditor()) return;
+        const p = state.players.find(pl => pl.id === el.dataset.reviewRemover);
+        if(!p) return;
+        const ok = confirm(`Remover ${p.name} do grupo?\n\nEle vai sumir da lista, mas o histórico continua nos relatórios.`);
+        if(!ok) return;
+        p.removido = true;
+        p.leftMonth = nowMonthKey();
+        save(); render(); renderReviewList();
+      });
+    });
+  }
+
+  function renderArchivedPlayers(){
+    const wrap = document.getElementById('archived-wrap');
+    const archived = state.players.filter(p => p.removido && !p.permanentlyDeleted);
+    if(archived.length === 0){
+      wrap.innerHTML = '';
+      return;
+    }
+    wrap.innerHTML = `
+      <div class="archived-toggle" id="archived-toggle">👥 Jogadores que saíram (${archived.length}) ▾</div>
+      <div class="archived-list" id="archived-list" style="display:none;">
+        ${archived.map(p => `
+          <div class="archived-row">
+            <span>${escapeHtml(p.name)} <span class="rn">saiu em ${monthLabel(p.leftMonth)}</span></span>
+            <button class="icon-btn edit-only" data-reativar="${p.id}" title="Reativar jogador">↩️</button>
+            <button class="icon-btn remove edit-only" data-excluir="${p.id}" title="Excluir definitivamente">🗑️</button>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    document.getElementById('archived-toggle').addEventListener('click', ()=>{
+      const list = document.getElementById('archived-list');
+      list.style.display = list.style.display === 'none' ? 'flex' : 'none';
+    });
+    wrap.querySelectorAll('[data-reativar]').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        if(!requireEditor()) return;
+        const p = state.players.find(pl => pl.id === el.dataset.reativar);
+        if(p){
+          p.removido = false;
+          delete p.leftMonth;
+          save(); render();
+        }
+      });
+    });
+    wrap.querySelectorAll('[data-excluir]').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        if(!requireEditor()) return;
+        const p = state.players.find(pl => pl.id === el.dataset.excluir);
+        if(!p) return;
+        const ok = confirm(`Excluir ${p.name} definitivamente da lista de gerenciamento?\n\nEle não vai mais aparecer aqui nem pra reativar. Os relatórios dos meses em que ele participou continuam mostrando ele normalmente — só não dá mais pra reativar ou editar esse jogador depois.`);
+        if(!ok) return;
+        p.permanentlyDeleted = true;
+        save(); render();
+      });
+    });
+  }
+
+  function escapeHtml(s){
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function statusLabel(status){
+    return status === 'pago' ? 'pago' : status === 'atrasado' ? 'atrasado' : 'pendente';
+  }
+
+  function caixaSaldo(){
+    return state.caixa.reduce((sum,t)=> sum + (Number(t.value)||0), 0);
+  }
+
+  function avulsosDoMes(month){
+    const m = month || currentMonth;
+    return state.avulsos.filter(a => a.date === m);
+  }
+
+  function avulsosArrecadadoNoMes(month){
+    return avulsosDoMes(month)
+      .filter(a => a.paid)
+      .reduce((sum,a) => sum + (Number(a.value)||0), 0);
+  }
+
+  function caixaUsadoNoMes(month){
+    const m = month || currentMonth;
+    return state.caixa
+      .filter(t => t.date === m && Number(t.value) < 0)
+      .reduce((sum,t) => sum + Math.abs(Number(t.value)), 0);
+  }
+
+  function excedenteJaGuardadoNoMes(month){
+    const m = month || currentMonth;
+    return state.caixa
+      .filter(t => t.date === m && t.isSurplusSave === true)
+      .reduce((sum,t) => sum + (Number(t.value)||0), 0);
+  }
+
+  function arrecadadoJogadores(month){
+    const m = month || currentMonth;
+    const fee = perPlayerFee(m);
+    let count = 0;
+    activePlayersInMonth(m).forEach(p=>{ if(getStatus(p.id, m) === 'pago') count++; });
+    return count * fee;
+  }
+
+  function arrecadadoTotal(month){
+    return arrecadadoJogadores(month) + caixaUsadoNoMes(month);
+  }
+
+  function populateCaixaPlayerSelect(){
+    const sel = document.getElementById('caixa-jogador');
+    const current = sel.value;
+    sel.innerHTML = '<option value="">— nenhum —</option>' +
+      state.players.filter(p => !p.removido).map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+    sel.value = current;
+  }
+
+  function renderCaixaModal(){
+    const saldo = caixaSaldo();
+    const saldoEl = document.getElementById('caixa-saldo-value');
+    saldoEl.textContent = 'R$ ' + saldo.toFixed(2);
+    saldoEl.classList.toggle('negative', saldo < 0);
+
+    populateCaixaPlayerSelect();
+
+    const listEl = document.getElementById('caixa-lista');
+    const items = [...state.caixa].sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
+    if(items.length === 0){
+      listEl.innerHTML = '<div class="report-empty">Nenhum lançamento ainda.</div>';
+      return;
+    }
+    listEl.innerHTML = items.map(t=>{
+      const player = state.players.find(p=>p.id===t.playerId);
+      const val = Number(t.value)||0;
+      const sign = val >= 0 ? '+' : '';
+      return `
+        <div class="caixa-row">
+          <div class="caixa-info">
+            <span class="caixa-desc">${escapeHtml(t.description || (val>=0 ? 'Entrada' : 'Saída'))}</span>
+            <span class="caixa-meta">${player ? escapeHtml(player.name)+' · ' : ''}${t.date ? monthLabel(t.date) : ''}</span>
+          </div>
+          <span class="caixa-val ${val>=0?'pos':'neg'}">${sign}R$ ${val.toFixed(2)}</span>
+          <button class="icon-btn remove edit-only" data-caixa-remove="${t.id}" title="Remover lançamento">✕</button>
+        </div>
+      `;
+    }).join('');
+
+    listEl.querySelectorAll('[data-caixa-remove]').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        if(!requireEditor()) return;
+        state.caixa = state.caixa.filter(t=>t.id!==el.dataset.caixaRemove);
+        save(); render(); renderCaixaModal();
+        if(document.getElementById('report-overlay').classList.contains('open')) buildReport();
+      });
+    });
+  }
+
+  function renderAvulsoModal(){
+    document.getElementById('avulso-list-title').textContent = 'Avulsos de ' + monthLabel(currentMonth);
+    document.getElementById('avulso-total-value').textContent = 'R$ ' + avulsosArrecadadoNoMes(currentMonth).toFixed(2);
+
+    const listEl = document.getElementById('avulso-lista');
+    const items = avulsosDoMes(currentMonth).sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
+    if(items.length === 0){
+      listEl.innerHTML = '<div class="report-empty">Nenhum avulso registrado neste mês.</div>';
+      return;
+    }
+    listEl.innerHTML = items.map(a=>{
+      const waHref = a.phone ? waLinkAvulso(a) : null;
+      return `
+        <div class="caixa-row">
+          <div class="caixa-info">
+            <span class="caixa-desc">${escapeHtml(a.name)}</span>
+            <span class="caixa-meta">R$ ${(Number(a.value)||0).toFixed(2)}</span>
+          </div>
+          <span class="card-status edit-only ${a.paid ? 'pago' : 'pendente'}" data-avulso-toggle="${a.id}" title="Clique pra marcar pago/não pago">${a.paid ? 'pago' : 'pendente'}</span>
+          ${waHref ? `<a class="icon-btn edit-only" href="${waHref}" target="_blank" title="Cobrar no WhatsApp" data-wa-link="1">💬</a>` : ''}
+          <button class="icon-btn remove edit-only" data-avulso-remove="${a.id}" title="Remover">✕</button>
+        </div>
+      `;
+    }).join('');
+
+    listEl.querySelectorAll('[data-avulso-toggle]').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        if(!requireEditor()) return;
+        const a = state.avulsos.find(x=>x.id===el.dataset.avulsoToggle);
+        if(a){ a.paid = !a.paid; save(); render(); renderAvulsoModal(); }
+      });
+    });
+    listEl.querySelectorAll('[data-avulso-remove]').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        if(!requireEditor()) return;
+        state.avulsos = state.avulsos.filter(a=>a.id!==el.dataset.avulsoRemove);
+        save(); render(); renderAvulsoModal();
+        if(document.getElementById('report-overlay').classList.contains('open')) buildReport();
+      });
+    });
+    listEl.querySelectorAll('[data-wa-link]').forEach(el=>{
+      el.addEventListener('click', (e)=>{
+        if(!window.__isEditor){
+          e.preventDefault();
+          alert('Só quem está logado com um e-mail autorizado pode enviar cobrança pelo WhatsApp.');
+        }
+      });
+    });
+  }
+
+  function waLinkAvulso(a){
+    const msg = `Fala ${a.name}! ⚽ Valor da diária avulsa: R$ ${(Number(a.value)||0).toFixed(2)}.${state.pixKey ? `\n\n🔑 Chave Pix: ${state.pixKey}` : ''}\n\nValeu!`;
+    const phone = (a.phone || '').replace(/\D/g,'');
+    const withCountry = phone.startsWith('55') ? phone : ('55' + phone);
+    return `https://wa.me/${withCountry}?text=${encodeURIComponent(msg)}`;
+  }
+
+
+  function overdueMonthsForPlayer(playerId){
+    const player = state.players.find(p=>p.id===playerId);
+    const joined = (player && player.joinedMonth) || currentMonth;
+    const months = allMonthsSince(joined, currentMonth)
+      .filter(m => !isPaid(playerId, m))
+      .map(monthLabel);
+    if(getStatus(playerId, currentMonth) === 'atrasado'){
+      months.push(monthLabel(currentMonth));
+    }
+    return months;
+  }
+
+  function allMonthsSince(start, end){
+    const months = [];
+    let [y,m] = start.split('-').map(Number);
+    while(true){
+      const key = y + '-' + String(m).padStart(2,'0');
+      if(key >= end) break;
+      months.push(key);
+      m++;
+      if(m>12){ m=1; y++; }
+      if(months.length > 240) break; // safety guard
+    }
+    return months;
+  }
+
+  function buildHistoricalDebts(){
+    const debts = []; // { player, months: [label,...] }
+    reportPlayerPool().forEach(p=>{
+      if(getStatus(p.id, currentMonth) === 'atrasado') return; // already covered in Atrasados
+      const joined = p.joinedMonth || currentMonth;
+      const owedMonths = allMonthsSince(joined, currentMonth)
+        .filter(m => !isPaid(p.id, m))
+        .map(monthLabel);
+      if(owedMonths.length){
+        debts.push({ player: p, months: owedMonths });
+      }
+    });
+    return debts;
+  }
+
+  function reportPlayerPool(){
+    const active = activePlayersInMonth(currentMonth);
+    if(selectedForReport.size === 0) return active;
+    return active.filter(p => selectedForReport.has(p.id));
+  }
+
+  function buildReport(){
+    const groups = { pago: [], pendente: [], atrasado: [] };
+    reportPlayerPool().forEach(p=>{
+      const status = getStatus(p.id);
+      groups[status].push(p);
+    });
+
+    document.getElementById('report-title').textContent = 'Relatório — ' + monthLabel(currentMonth) +
+      (selectedForReport.size > 0 ? ` (${selectedForReport.size} selecionados)` : '');
+
+    const fee = perPlayerFee();
+    const activeCount = activePlayersInMonth(currentMonth).length;
+    const arrecadadoJog = arrecadadoJogadores(currentMonth);
+    const caixaUsado = caixaUsadoNoMes(currentMonth);
+    const avulsoArrecadado = avulsosArrecadadoNoMes(currentMonth);
+    const arrecadado = arrecadadoJog + caixaUsado + avulsoArrecadado;
+    const emAberto = Math.max(0, state.courtTotal - arrecadado);
+    document.getElementById('report-summary').innerHTML = `
+      <div class="cell"><div class="n">R$ ${arrecadado.toFixed(2)}</div><div class="l">Arrecadado</div></div>
+      <div class="cell"><div class="n">R$ ${emAberto.toFixed(2)}</div><div class="l">Em aberto</div></div>
+      <div class="cell"><div class="n">${activeCount}</div><div class="l">Jogadores</div></div>
+    `;
+    const surplus = Math.max(0, (arrecadado - state.courtTotal) - excedenteJaGuardadoNoMes(currentMonth));
+    document.getElementById('report-summary').insertAdjacentHTML('beforeend', `
+      <div class="cell" style="grid-column:1/-1;margin-top:-2px;">
+        <div class="l">Quadra R$ ${state.courtTotal} ÷ ${activeCount} = R$ ${fee.toFixed(2)} por pessoa</div>
+      </div>
+      ${(caixaUsado > 0 || avulsoArrecadado > 0) ? `
+      <div class="cell" style="grid-column:1/-1;margin-top:-6px;">
+        <div class="l">Jogadores: R$ ${arrecadadoJog.toFixed(2)}${caixaUsado>0 ? ` + Caixa: R$ ${caixaUsado.toFixed(2)}` : ''}${avulsoArrecadado>0 ? ` + Avulsos: R$ ${avulsoArrecadado.toFixed(2)}` : ''}</div>
+      </div>` : ''}
+      ${surplus > 0.004 ? `
+      <div class="cell" style="grid-column:1/-1;margin-top:-6px;">
+        <div class="l" style="color:var(--green-card);font-weight:700;">Excedente do mês: R$ ${surplus.toFixed(2)}</div>
+      </div>` : ''}
+      <div class="cell" style="grid-column:1/-1;margin-top:-6px;">
+        <div class="l" style="font-weight:700;">Caixa extra disponível: R$ ${caixaSaldo().toFixed(2)}</div>
+      </div>
+    `);
+
+    const shortfall = state.courtTotal - arrecadado;
+    const coverBtnWrap = document.getElementById('cover-shortfall-wrap');
+    if(shortfall > 0.004 && caixaSaldo() > 0){
+      const amount = Math.min(shortfall, caixaSaldo());
+      coverBtnWrap.style.display = '';
+      coverBtnWrap.innerHTML = `
+        <button class="btn-gold edit-only" id="cover-shortfall-btn" style="width:100%;">
+          🔄 Puxar R$ ${amount.toFixed(2)} do caixa pra cobrir esse mês
+        </button>
+      `;
+      document.getElementById('cover-shortfall-btn').addEventListener('click', ()=>{
+        if(!requireEditor()) return;
+        state.caixa.push({
+          id: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+          value: -amount, playerId: null,
+          description: 'Complemento automático — cobertura da quadra',
+          date: currentMonth, createdAt: Date.now()
+        });
+        save(); render(); buildReport();
+      });
+    } else if(surplus > 0.004){
+      coverBtnWrap.style.display = '';
+      coverBtnWrap.innerHTML = `
+        <button class="btn-gold edit-only" id="save-surplus-btn" style="width:100%;">
+          📥 Guardar R$ ${surplus.toFixed(2)} de excedente no caixa
+        </button>
+      `;
+      document.getElementById('save-surplus-btn').addEventListener('click', ()=>{
+        if(!requireEditor()) return;
+        state.caixa.push({
+          id: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+          value: surplus, playerId: null,
+          description: 'Excedente guardado — sobra da quadra',
+          date: currentMonth, createdAt: Date.now(),
+          isSurplusSave: true
+        });
+        save(); render(); buildReport();
+      });
+    } else {
+      coverBtnWrap.style.display = 'none';
+      coverBtnWrap.innerHTML = '';
+    }
+
+    fillReportList('report-pagos', groups.pago, 'Nenhum pagamento confirmado ainda.');
+    fillReportList('report-pendentes', groups.pendente, 'Ninguém pendente. 🎉');
+    fillReportList('report-atrasados', groups.atrasado, 'Ninguém atrasado.', true);
+
+    const debts = buildHistoricalDebts();
+    const histSection = document.getElementById('report-historico-section');
+    const histEl = document.getElementById('report-historico');
+    if(debts.length === 0){
+      histSection.style.display = 'none';
+    } else {
+      histSection.style.display = '';
+      let totalMesesHist = 0, totalValorHist = 0;
+      const histRows = debts.map(d => {
+        const valor = d.months.length * fee;
+        totalMesesHist += d.months.length;
+        totalValorHist += valor;
+        return `
+        <div class="hist-row hist-row-detailed">
+          <div class="hist-top">
+            <span>${escapeHtml(d.player.name)}${d.player.number!=null ? ' <span class="rn">#'+d.player.number+'</span>' : ''}</span>
+            <span class="rn hist-total">${d.months.length} ${d.months.length===1?'mês':'meses'} · R$ ${valor.toFixed(2)}</span>
+          </div>
+          <div class="hist-months">${d.months.join(', ')}</div>
+        </div>
+      `;
+      }).join('');
+      const histTotalLine = debts.length > 1 ? `
+        <div class="hist-row hist-grand-total">
+          <span>Total geral</span>
+          <span class="rn">${totalMesesHist} ${totalMesesHist===1?'mês':'meses'} · R$ ${totalValorHist.toFixed(2)}</span>
+        </div>
+      ` : '';
+      histEl.innerHTML = histRows + histTotalLine;
+    }
+
+    renderCaixaHistoryInReport();
+    renderAvulsoInReport();
+  }
+
+  function renderAvulsoInReport(){
+    const section = document.getElementById('report-avulso-section');
+    const el = document.getElementById('report-avulso-list');
+    const items = avulsosDoMes(currentMonth).sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
+    if(items.length === 0){
+      section.style.display = 'none';
+      return;
+    }
+    section.style.display = '';
+    el.innerHTML = items.map(a => `
+      <div class="report-row">
+        <span>${escapeHtml(a.name)}</span>
+        <span class="rn">${a.paid ? '✔ pago' : '● pendente'} · R$ ${(Number(a.value)||0).toFixed(2)}</span>
+      </div>
+    `).join('');
+  }
+
+  function renderCaixaHistoryInReport(){
+    const el = document.getElementById('report-caixa-historico');
+    const items = [...state.caixa].sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
+    if(items.length === 0){
+      el.innerHTML = '<div class="report-empty">Nenhum lançamento no caixa extra ainda.</div>';
+      return;
+    }
+    el.innerHTML = items.map(t=>{
+      const player = state.players.find(p=>p.id===t.playerId);
+      const val = Number(t.value)||0;
+      const sign = val >= 0 ? '+' : '';
+      return `
+        <div class="caixa-hist-row">
+          <div class="caixa-hist-info">
+            <span class="caixa-hist-desc">${escapeHtml(t.description || (val>=0 ? 'Entrada' : 'Saída'))}</span>
+            <span class="rn">${player ? escapeHtml(player.name)+' · ' : ''}${t.date ? monthLabel(t.date) : ''}</span>
+          </div>
+          <span class="caixa-hist-val ${val>=0?'pos':'neg'}">${sign}R$ ${val.toFixed(2)}</span>
+        </div>
+      `;
+    }).join('') + `
+      <div class="hist-row atrasado-grand-total">
+        <span>Saldo atual</span>
+        <span class="rn">R$ ${caixaSaldo().toFixed(2)}</span>
+      </div>
+    `;
+  }
+
+  function fillReportList(elId, list, emptyMsg, showMonths){
+    const el = document.getElementById(elId);
+    if(list.length===0){
+      el.innerHTML = `<div class="report-empty">${emptyMsg}</div>`;
+      return;
+    }
+    const fee = perPlayerFee();
+    let totalMonths = 0, totalValue = 0;
+    const rows = list.map(p => {
+      if(showMonths){
+        const months = overdueMonthsForPlayer(p.id);
+        const valor = months.length * fee;
+        totalMonths += months.length;
+        totalValue += valor;
+        return `
+      <div class="report-row atrasado-row">
+        <div class="atrasado-top">
+          <span>${escapeHtml(p.name)}${p.number!=null ? ' <span class="rn">#'+p.number+'</span>' : ''}</span>
+          <span class="rn atrasado-total">${months.length} ${months.length===1?'mês':'meses'} · R$ ${valor.toFixed(2)}</span>
+        </div>
+        <div class="atrasado-months">${months.join(', ')}</div>
+      </div>
+    `;
+      }
+      return `
+      <div class="report-row">
+        <span>${escapeHtml(p.name)}</span>
+        <span class="rn">${p.number!=null ? '#'+p.number : ''}</span>
+      </div>
+    `;
+    }).join('');
+
+    const totalLine = showMonths && list.length > 1 ? `
+      <div class="report-row atrasado-grand-total">
+        <span>Total geral</span>
+        <span class="rn">${totalMonths} ${totalMonths===1?'mês':'meses'} · R$ ${totalValue.toFixed(2)}</span>
+      </div>
+    ` : '';
+
+    el.innerHTML = rows + totalLine;
+  }
+
+  function padCol(str, width){
+    str = String(str);
+    if(str.length >= width) return str + ' ';
+    return str + ' '.repeat(width - str.length);
+  }
+
+  function reportAsText(){
+    const groups = { pago: [], pendente: [], atrasado: [] };
+    reportPlayerPool().forEach(p=>{
+      groups[getStatus(p.id)].push(p);
+    });
+    const fee = perPlayerFee();
+    const activeCount = activePlayersInMonth(currentMonth).length;
+    const arrecadadoJog = arrecadadoJogadores(currentMonth);
+    const caixaUsado = caixaUsadoNoMes(currentMonth);
+    const avulsoArrecadado = avulsosArrecadadoNoMes(currentMonth);
+    const arrecadadoTxt = arrecadadoJog + caixaUsado + avulsoArrecadado;
+    const emAbertoTxt = Math.max(0, state.courtTotal - arrecadadoTxt);
+
+    let txt = `⚽ *Futebol Arena Saae* — Relatório ${monthLabel(currentMonth)}${selectedForReport.size>0 ? ` (${selectedForReport.size} selecionados)` : ''}\n`;
+    txt += `Quadra R$ ${state.courtTotal} ÷ ${activeCount} jogadores = R$ ${fee.toFixed(2)}/pessoa\n\n`;
+
+    txt += '```\n';
+    txt += `${padCol('Arrecadado', 14)} R$ ${arrecadadoTxt.toFixed(2)}\n`;
+    if(caixaUsado > 0){
+      txt += `${padCol('  · jogadores', 14)} R$ ${arrecadadoJog.toFixed(2)}\n`;
+      txt += `${padCol('  · caixa', 14)} R$ ${caixaUsado.toFixed(2)}\n`;
+    }
+    txt += `${padCol('Em aberto', 14)} R$ ${emAbertoTxt.toFixed(2)}\n`;
+    const surplusTxt = Math.max(0, (arrecadadoTxt - state.courtTotal) - excedenteJaGuardadoNoMes(currentMonth));
+    if(surplusTxt > 0.004){
+      txt += `${padCol('Excedente', 14)} R$ ${surplusTxt.toFixed(2)}\n`;
+    }
+    txt += `${padCol('Caixa livre', 14)} R$ ${caixaSaldo().toFixed(2)}\n`;
+    txt += '```\n';
+
+    const allNames = [
+      ...groups.pago.map(p=>p.name), ...groups.pendente.map(p=>p.name), ...groups.atrasado.map(p=>p.name),
+      'TOTAL'
+    ];
+    const nameW = Math.min(22, Math.max(10, ...allNames.map(n=>n.length)) + 1);
+
+    txt += `\n✔ *PAGOS* (${groups.pago.length})\n`;
+    if(groups.pago.length){
+      txt += '```\n';
+      txt += groups.pago.map(p=>padCol(p.name, nameW) + (p.number!=null ? '#'+p.number : '')).join('\n');
+      txt += '\n```\n';
+    } else {
+      txt += '(nenhum)\n';
+    }
+
+    txt += `\n● *PENDENTES* (${groups.pendente.length})\n`;
+    if(groups.pendente.length){
+      txt += '```\n';
+      txt += groups.pendente.map(p=>padCol(p.name, nameW) + (p.number!=null ? '#'+p.number : '')).join('\n');
+      txt += '\n```\n';
+    } else {
+      txt += '(nenhum)\n';
+    }
+
+    txt += `\n✖ *ATRASADOS* (${groups.atrasado.length})\n`;
+    if(groups.atrasado.length){
+      txt += '```\n';
+      txt += padCol('Nome', nameW) + padCol('Meses', 7) + 'Valor\n';
+      txt += '-'.repeat(nameW + 7 + 12) + '\n';
+      let totalMesesAtraso = 0, totalValorAtraso = 0;
+      const rows = groups.atrasado.map(p=>{
+        const months = overdueMonthsForPlayer(p.id);
+        const valor = months.length * fee;
+        totalMesesAtraso += months.length;
+        totalValorAtraso += valor;
+        return { name: p.name, months, valor };
+      });
+      txt += rows.map(r => padCol(r.name, nameW) + padCol(r.months.length, 7) + `R$ ${r.valor.toFixed(2)}`).join('\n');
+      if(rows.length > 1){
+        txt += '\n' + '-'.repeat(nameW + 7 + 12) + '\n';
+        txt += padCol('TOTAL', nameW) + padCol(totalMesesAtraso, 7) + `R$ ${totalValorAtraso.toFixed(2)}`;
+      }
+      txt += '\n```\n';
+      txt += rows.map(r => `_${r.name}: ${r.months.join(', ')}_`).join('\n') + '\n';
+    } else {
+      txt += '(nenhum)\n';
+    }
+
+    const debts = buildHistoricalDebts();
+    if(debts.length){
+      txt += `\n⏳ *DEVENDO DE MESES ANTERIORES*\n`;
+      txt += '```\n';
+      txt += padCol('Nome', nameW) + padCol('Meses', 7) + 'Valor\n';
+      txt += '-'.repeat(nameW + 7 + 12) + '\n';
+      let totalMesesHist = 0, totalValorHist = 0;
+      const rows = debts.map(d=>{
+        const valor = d.months.length * fee;
+        totalMesesHist += d.months.length;
+        totalValorHist += valor;
+        return { name: d.player.name, months: d.months, valor };
+      });
+      txt += rows.map(r => padCol(r.name, nameW) + padCol(r.months.length, 7) + `R$ ${r.valor.toFixed(2)}`).join('\n');
+      if(rows.length > 1){
+        txt += '\n' + '-'.repeat(nameW + 7 + 12) + '\n';
+        txt += padCol('TOTAL', nameW) + padCol(totalMesesHist, 7) + `R$ ${totalValorHist.toFixed(2)}`;
+      }
+      txt += '\n```\n';
+      txt += rows.map(r => `_${r.name}: ${r.months.join(', ')}_`).join('\n') + '\n';
+    }
+
+    const avulsoItems = avulsosDoMes(currentMonth).sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
+    if(avulsoItems.length > 0){
+      txt += `\n🎽 *AVULSOS DO MÊS*\n`;
+      txt += '```\n';
+      txt += avulsoItems.map(a => padCol(a.name, nameW) + padCol(a.paid?'pago':'pendente', 10) + `R$ ${(Number(a.value)||0).toFixed(2)}`).join('\n');
+      txt += '\n```\n';
+    }
+
+    const caixaItems = [...state.caixa].sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
+    txt += `\n💰 *HISTÓRICO DO CAIXA EXTRA*\n`;
+    if(caixaItems.length === 0){
+      txt += '(nenhum lançamento ainda)\n';
+    } else {
+      const descW = Math.min(24, Math.max(10, ...caixaItems.map(t=>(t.description||'').length)) + 1);
+      txt += '```\n';
+      txt += caixaItems.map(t=>{
+        const player = state.players.find(p=>p.id===t.playerId);
+        const val = Number(t.value)||0;
+        const sign = val >= 0 ? '+' : '';
+        const desc = t.description || (val>=0?'Entrada':'Saída');
+        return padCol(desc, descW) + padCol(t.date ? monthLabel(t.date) : '', 9) + `${sign}R$ ${val.toFixed(2)}`;
+      }).join('\n');
+      txt += '\n' + '-'.repeat(descW + 9 + 12) + '\n';
+      txt += padCol('Saldo atual', descW) + padCol('', 9) + `R$ ${caixaSaldo().toFixed(2)}`;
+      txt += '\n```\n';
+    }
+    return txt;
+  }
+
+  document.getElementById('select-all-btn').addEventListener('click', ()=>{
+    const active = activePlayersInMonth(currentMonth).filter(p => !p.removido);
+    const allSelected = active.length > 0 && active.every(p => selectedForReport.has(p.id));
+    if(allSelected){
+      selectedForReport.clear();
+    } else {
+      active.forEach(p => selectedForReport.add(p.id));
+    }
+    render();
+  });
+
+  document.getElementById('bulk-remove-btn').addEventListener('click', ()=>{
+    if(!requireEditor()) return;
+    if(selectedForReport.size === 0) return;
+    const names = state.players
+      .filter(p => selectedForReport.has(p.id))
+      .map(p => p.name);
+    if(names.length === 0) return;
+    const ok = confirm(`Remover ${names.length} jogador${names.length>1?'es':''} do grupo?\n\n${names.join(', ')}\n\nEles vão sumir da lista a partir de agora, mas o histórico de meses em que jogaram e pagaram continua aparecendo nos relatórios. Você pode reativar depois na lista "Jogadores que saíram", se precisar.`);
+    if(!ok) return;
+    state.players.forEach(p=>{
+      if(selectedForReport.has(p.id)){
+        p.removido = true;
+        p.leftMonth = nowMonthKey();
+      }
+    });
+    selectedForReport.clear();
+    save(); render();
+  });
+
+  document.getElementById('clear-selection-btn').addEventListener('click', ()=>{
+    selectedForReport.clear();
+    updateSelectionUI();
+    render();
+  });
+  document.getElementById('report-btn').addEventListener('click', ()=>{
+    buildReport();
+    document.getElementById('report-overlay').classList.add('open');
+  });
+  document.getElementById('close-report-btn').addEventListener('click', ()=>{
+    document.getElementById('report-overlay').classList.remove('open');
+  });
+  document.getElementById('report-overlay').addEventListener('click', (e)=>{
+    if(e.target.id === 'report-overlay') e.currentTarget.classList.remove('open');
+  });
+  document.getElementById('print-report-btn').addEventListener('click', ()=> window.print());
+  document.getElementById('copy-report-btn').addEventListener('click', async ()=>{
+    const txt = reportAsText();
+    try{
+      await navigator.clipboard.writeText(txt);
+      const btn = document.getElementById('copy-report-btn');
+      const original = btn.textContent;
+      btn.textContent = 'Copiado ✓';
+      setTimeout(()=> btn.textContent = original, 1500);
+    }catch(e){
+      alert('Não foi possível copiar automaticamente. Selecione o texto manualmente.');
+    }
+  });
+
+  document.getElementById('caixa-btn').addEventListener('click', ()=>{
+    renderCaixaModal();
+    document.getElementById('caixa-overlay').classList.add('open');
+  });
+  document.getElementById('close-caixa-btn').addEventListener('click', ()=>{
+    document.getElementById('caixa-overlay').classList.remove('open');
+  });
+  document.getElementById('caixa-overlay').addEventListener('click', (e)=>{
+    if(e.target.id === 'caixa-overlay') e.currentTarget.classList.remove('open');
+  });
+  document.getElementById('avulso-btn').addEventListener('click', ()=>{
+    renderAvulsoModal();
+    document.getElementById('avulso-overlay').classList.add('open');
+  });
+  document.getElementById('close-avulso-btn').addEventListener('click', ()=>{
+    document.getElementById('avulso-overlay').classList.remove('open');
+  });
+  document.getElementById('avulso-overlay').addEventListener('click', (e)=>{
+    if(e.target.id === 'avulso-overlay') e.currentTarget.classList.remove('open');
+  });
+  document.getElementById('review-players-btn').addEventListener('click', ()=>{
+    renderReviewList();
+    document.getElementById('review-overlay').classList.add('open');
+  });
+  document.getElementById('close-review-btn').addEventListener('click', ()=>{
+    document.getElementById('review-overlay').classList.remove('open');
+  });
+  document.getElementById('review-overlay').addEventListener('click', (e)=>{
+    if(e.target.id === 'review-overlay') e.currentTarget.classList.remove('open');
+  });
+  document.getElementById('add-avulso-btn').addEventListener('click', ()=>{
+    if(!requireEditor()) return;
+    const nameInput = document.getElementById('avulso-nome');
+    const valorInput = document.getElementById('avulso-valor');
+    const name = nameInput.value.trim();
+    const value = parseFloat(valorInput.value);
+    if(!name){ alert('Digite o nome de quem jogou avulso.'); return; }
+    if(isNaN(value) || value <= 0){ alert('Digite um valor válido.'); return; }
+    const phone = document.getElementById('avulso-phone').value.trim().replace(/\D/g,'');
+    state.avulsos.push({
+      id: 'av_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+      name, value, phone, paid: false,
+      date: currentMonth, createdAt: Date.now()
+    });
+    nameInput.value = '';
+    valorInput.value = '';
+    document.getElementById('avulso-phone').value = '';
+    save(); render(); renderAvulsoModal();
+    if(document.getElementById('report-overlay').classList.contains('open')) buildReport();
+  });
+  let caixaTipo = 'entrada';
+  document.getElementById('caixa-tipo-entrada').addEventListener('click', ()=>{
+    caixaTipo = 'entrada';
+    document.getElementById('caixa-tipo-entrada').classList.add('active');
+    document.getElementById('caixa-tipo-saida').classList.remove('active');
+  });
+  document.getElementById('caixa-tipo-saida').addEventListener('click', ()=>{
+    caixaTipo = 'saida';
+    document.getElementById('caixa-tipo-saida').classList.add('active');
+    document.getElementById('caixa-tipo-entrada').classList.remove('active');
+  });
+  document.getElementById('add-caixa-btn').addEventListener('click', ()=>{
+    if(!requireEditor()) return;
+    const valorInput = document.getElementById('caixa-valor');
+    const raw = parseFloat(valorInput.value);
+    if(isNaN(raw) || raw === 0){ alert('Digite um valor diferente de zero.'); return; }
+    const value = caixaTipo === 'saida' ? -Math.abs(raw) : Math.abs(raw);
+    const playerId = document.getElementById('caixa-jogador').value;
+    const description = document.getElementById('caixa-descricao').value.trim();
+    state.caixa.push({
+      id: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+      value, playerId: playerId || null, description,
+      date: currentMonth, createdAt: Date.now()
+    });
+    valorInput.value='';
+    document.getElementById('caixa-descricao').value='';
+    document.getElementById('caixa-jogador').value='';
+    caixaTipo = 'entrada';
+    document.getElementById('caixa-tipo-entrada').classList.add('active');
+    document.getElementById('caixa-tipo-saida').classList.remove('active');
+    save(); render(); renderCaixaModal();
+    if(document.getElementById('report-overlay').classList.contains('open')) buildReport();
+  });
+
+  document.getElementById('month-select').addEventListener('change', e=>{
+    currentMonth = e.target.value;
+    render();
+  });
+  document.getElementById('fee-input').addEventListener('change', e=>{
+    if(!requireEditor()) return;
+    state.courtTotal = parseFloat(e.target.value) || 0;
+    save(); render();
+  });
+  document.getElementById('pix-input').addEventListener('change', e=>{
+    if(!requireEditor()) return;
+    state.pixKey = e.target.value.trim();
+    save();
+  });
+  let editingPlayerId = null;
+
+  function openAddPlayer(){
+    editingPlayerId = null;
+    document.getElementById('new-name').value = '';
+    document.getElementById('new-number').value = '';
+    document.getElementById('new-phone').value = '';
+    document.getElementById('new-joined').value = currentMonth;
+    document.getElementById('save-player-btn').textContent = 'Adicionar';
+    document.getElementById('add-form').classList.add('open');
+  }
+
+  function openEditPlayer(playerId){
+    const p = state.players.find(pl => pl.id === playerId);
+    if(!p) return;
+    editingPlayerId = playerId;
+    document.getElementById('new-name').value = p.name || '';
+    document.getElementById('new-number').value = p.number ?? '';
+    document.getElementById('new-phone').value = p.phone || '';
+    document.getElementById('new-joined').value = p.joinedMonth || currentMonth;
+    document.getElementById('save-player-btn').textContent = 'Salvar alterações';
+    document.getElementById('add-form').classList.add('open');
+    document.getElementById('add-form').scrollIntoView({ behavior:'smooth', block:'center' });
+  }
+
+  document.getElementById('toggle-form-btn').addEventListener('click', ()=>{
+    if(!requireEditor()) return;
+    const form = document.getElementById('add-form');
+    if(form.classList.contains('open')){
+      form.classList.remove('open');
+    } else {
+      openAddPlayer();
+    }
+  });
+  document.getElementById('cancel-add-btn').addEventListener('click', ()=>{
+    editingPlayerId = null;
+    document.getElementById('add-form').classList.remove('open');
+  });
+  document.getElementById('save-player-btn').addEventListener('click', ()=>{
+    if(!requireEditor()) return;
+    const name = document.getElementById('new-name').value.trim();
+    const number = document.getElementById('new-number').value;
+    const phone = document.getElementById('new-phone').value.trim().replace(/\D/g,'');
+    const joined = document.getElementById('new-joined').value || currentMonth;
+    if(!name){ alert('Digite o nome do jogador.'); return; }
+
+    if(editingPlayerId){
+      const p = state.players.find(pl => pl.id === editingPlayerId);
+      if(p){
+        p.name = name;
+        p.number = number ? parseInt(number,10) : null;
+        p.phone = phone;
+        p.joinedMonth = joined;
+      }
+      editingPlayerId = null;
+    } else {
+      state.players.push({
+        id: 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+        name, number: number ? parseInt(number,10) : null, phone,
+        joinedMonth: joined
+      });
+    }
+    document.getElementById('new-name').value='';
+    document.getElementById('new-number').value='';
+    document.getElementById('new-phone').value='';
+    document.getElementById('save-player-btn').textContent = 'Adicionar';
+    document.getElementById('add-form').classList.remove('open');
+    save(); render();
+  });
+
+  document.getElementById('backup-export-btn').addEventListener('click', ()=>{
+    if(!requireEditor()) return;
+    const dataStr = JSON.stringify(state, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const stamp = new Date().toISOString().slice(0,10);
+    a.href = url;
+    a.download = `backup-futebol-arena-saae-${stamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById('backup-import-btn').addEventListener('click', ()=>{
+    if(!requireEditor()) return;
+    document.getElementById('backup-file-input').click();
+  });
+
+  document.getElementById('backup-file-input').addEventListener('change', (e)=>{
+    if(!requireEditor()) return;
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt)=>{
+      try{
+        const imported = JSON.parse(evt.target.result);
+        if(!imported || !Array.isArray(imported.players)){
+          alert('Esse arquivo não parece ser um backup válido deste app.');
+          return;
+        }
+        const ok = confirm(`Restaurar este backup vai SUBSTITUIR todos os dados atuais (${state.players.length} jogadores) pelos do arquivo (${imported.players.length} jogadores). Essa ação não pode ser desfeita. Continuar?`);
+        if(!ok) return;
+        state = imported;
+        setMonthInputValue();
+        document.getElementById('fee-input').value = state.courtTotal || 750;
+        document.getElementById('pix-input').value = state.pixKey || '119963717973';
+        save();
+        render();
+        alert('Backup restaurado com sucesso.');
+      }catch(err){
+        alert('Não foi possível ler esse arquivo: ' + err.message);
+      }
+      document.getElementById('backup-file-input').value = '';
+    };
+    reader.readAsText(file);
+  });
+
+  window.__bootApp = function(){
+    if(window.__appBooted) return;
+    window.__appBooted = true;
+
+    load();
+
+    if(typeof firebaseReady !== 'undefined' && firebaseReady){
+      firebase.database().ref('dados/' + STORAGE_KEY).on('value', (snap)=>{
+        const val = snap.val();
+        if(val){
+          try{
+            const incoming = JSON.parse(val);
+            if(incoming.updatedAt && state.updatedAt && incoming.updatedAt < state.updatedAt){
+              return;
+            }
+            state = incoming;
+            document.getElementById('pix-input').value = state.pixKey || '119963717973';
+            document.getElementById('fee-input').value = state.courtTotal || 750;
+            render();
+            if(document.getElementById('report-overlay').classList.contains('open')) buildReport();
+            if(document.getElementById('caixa-overlay').classList.contains('open')) renderCaixaModal();
+            if(document.getElementById('avulso-overlay').classList.contains('open')) renderAvulsoModal();
+          }catch(e){ /* ignora atualização malformada */ }
+        }
+      });
+    }
+  };
+
+  if(typeof firebaseReady === 'undefined' || !firebaseReady){
+    window.__bootApp();
+  }
+})();
+</script>
+</body>
+</html>
