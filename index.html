@@ -973,6 +973,7 @@ window.storage = {
   let state = { players: [], paymentsByMonth: {}, courtTotal: 750, caixa: [], pixKey: '119963717973', avulsos: [] };
 
   function isActiveInMonth(player, month){
+    if(player.permanentlyDeleted) return false;
     const afterJoin = !player.joinedMonth || month >= player.joinedMonth;
     const beforeLeft = !player.removido || !player.leftMonth || month < player.leftMonth;
     return afterJoin && beforeLeft;
