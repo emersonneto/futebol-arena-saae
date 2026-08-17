@@ -626,7 +626,10 @@
       <span class="fee-tag">Quadra R$</span>
       <input type="number" id="fee-input" class="edit-only" placeholder="750" style="width:90px;" min="0" step="10">
     </div>
-    <div class="per-player-tag" id="per-player-tag">R$ 0 / pessoa</div>
+    <div class="fee-field">
+      <span class="fee-tag">Por pessoa R$</span>
+      <input type="number" id="per-person-input" class="edit-only" placeholder="30" style="width:80px;" min="0" step="1">
+    </div>
     <button class="btn-ghost caixa-btn" id="caixa-btn">💰 Caixa: R$ 0</button>
     <button class="btn-ghost avulso-btn" id="avulso-btn">🎽 Avulsos: R$ 0</button>
     <div class="spacer"></div>
@@ -970,7 +973,7 @@ window.storage = {
 <script>
 (function(){
   const STORAGE_KEY = 'pelada-fc-data';
-  let state = { players: [], paymentsByMonth: {}, courtTotal: 750, caixa: [], pixKey: '119963717973', avulsos: [] };
+  let state = { players: [], paymentsByMonth: {}, courtTotal: 750, caixa: [], pixKey: '119963717973', avulsos: [], perPersonFee: 30 };
 
   function isActiveInMonth(player, month){
     if(player.permanentlyDeleted) return false;
@@ -983,11 +986,7 @@ window.storage = {
   }
 
   function perPlayerFee(month){
-    const m = month || currentMonth;
-    const total = Number(state.courtTotal) || 0;
-    const active = activePlayersInMonth(m);
-    if(!active.length || !total) return 0;
-    return Math.round((total / active.length) * 100) / 100;
+    return Math.round((Number(state.perPersonFee) || 0) * 100) / 100;
   }
   let currentMonth = monthKey(new Date());
   let selectedForReport = new Set();
@@ -1029,8 +1028,13 @@ window.storage = {
     if(!Array.isArray(state.caixa)) state.caixa = [];
     if(!Array.isArray(state.avulsos)) state.avulsos = [];
     if(!state.pixKey) state.pixKey = '119963717973';
+    if(state.perPersonFee === undefined || state.perPersonFee === null){
+      const activeNow = state.players.filter(p => !p.removido && !p.permanentlyDeleted).length;
+      state.perPersonFee = activeNow > 0 ? Math.round((Number(state.courtTotal)||0) / activeNow * 100) / 100 : 30;
+    }
     document.getElementById('pix-input').value = state.pixKey;
     document.getElementById('fee-input').value = state.courtTotal || 750;
+    document.getElementById('per-person-input').value = state.perPersonFee;
     setMonthInputValue();
     render();
     save();
@@ -1093,16 +1097,15 @@ window.storage = {
 
   function waLink(player){
     const fee = perPlayerFee();
-    const activeCount = activePlayersInMonth(currentMonth).length;
     const overdue = overdueMonthsForPlayer(player.id);
     const pixLine = state.pixKey ? `\n\n🔑 Chave Pix: ${state.pixKey}` : '';
     let msg;
     if(overdue.length > 0){
       const mesesTxt = overdue.join(', ');
       const totalDevido = (overdue.length * fee).toFixed(2);
-      msg = `Fala ${player.name}! ⚽ Você está com ${overdue.length} mensalidade${overdue.length>1?'s':''} em aberto (${mesesTxt}), totalizando R$ ${totalDevido}. Valor de cada mês: R$ ${fee.toFixed(2)} (rateio da quadra de R$ ${state.courtTotal} entre ${activeCount} jogadores). Dá pra regularizar?${pixLine}\n\nValeu!`;
+      msg = `Fala ${player.name}! ⚽ Você está com ${overdue.length} mensalidade${overdue.length>1?'s':''} em aberto (${mesesTxt}), totalizando R$ ${totalDevido}. Valor de cada mês: R$ ${fee.toFixed(2)}. Dá pra regularizar?${pixLine}\n\nValeu!`;
     } else {
-      msg = `Fala ${player.name}! ⚽ Lembrete da mensalidade do futebol de ${monthLabel(currentMonth)}: R$ ${fee.toFixed(2)} (rateio da quadra de R$ ${state.courtTotal} entre ${activeCount} jogadores).${pixLine}\n\nValeu!`;
+      msg = `Fala ${player.name}! ⚽ Lembrete da mensalidade do futebol de ${monthLabel(currentMonth)}: R$ ${fee.toFixed(2)}.${pixLine}\n\nValeu!`;
     }
     const phone = (player.phone || '').replace(/\D/g,'');
     const withCountry = phone.startsWith('55') ? phone : ('55' + phone);
@@ -1161,7 +1164,6 @@ window.storage = {
     document.getElementById('stat-arrecadado').textContent = 'R$ ' + arrecadado.toFixed(2);
     document.getElementById('stat-pendentes').textContent = pendentes;
     document.getElementById('stat-total').textContent = activePlayers.length;
-    document.getElementById('per-player-tag').textContent = 'R$ ' + perPlayerFee().toFixed(2) + ' / pessoa';
     const saldo = caixaSaldo();
     const caixaBtn = document.getElementById('caixa-btn');
     caixaBtn.textContent = '💰 Caixa: R$ ' + saldo.toFixed(2);
@@ -1559,7 +1561,7 @@ window.storage = {
     const surplus = Math.max(0, (arrecadado - state.courtTotal) - excedenteJaGuardadoNoMes(currentMonth));
     document.getElementById('report-summary').insertAdjacentHTML('beforeend', `
       <div class="cell" style="grid-column:1/-1;margin-top:-2px;">
-        <div class="l">Quadra R$ ${state.courtTotal} ÷ ${activeCount} = R$ ${fee.toFixed(2)} por pessoa</div>
+        <div class="l">Valor por pessoa: R$ ${fee.toFixed(2)} · Quadra: R$ ${state.courtTotal}</div>
       </div>
       ${(caixaUsado > 0 || avulsoArrecadado > 0) ? `
       <div class="cell" style="grid-column:1/-1;margin-top:-6px;">
@@ -1763,7 +1765,7 @@ window.storage = {
     const emAbertoTxt = Math.max(0, state.courtTotal - arrecadadoTxt);
 
     let txt = `⚽ *Futebol Arena Saae* — Relatório ${monthLabel(currentMonth)}${selectedForReport.size>0 ? ` (${selectedForReport.size} selecionados)` : ''}\n`;
-    txt += `Quadra R$ ${state.courtTotal} ÷ ${activeCount} jogadores = R$ ${fee.toFixed(2)}/pessoa\n\n`;
+    txt += `Valor por pessoa: R$ ${fee.toFixed(2)} · Quadra: R$ ${state.courtTotal}\n\n`;
 
     txt += '```\n';
     txt += `${padCol('Arrecadado', 14)} R$ ${arrecadadoTxt.toFixed(2)}\n`;
@@ -2030,6 +2032,11 @@ window.storage = {
     state.courtTotal = parseFloat(e.target.value) || 0;
     save(); render();
   });
+  document.getElementById('per-person-input').addEventListener('change', e=>{
+    if(!requireEditor()) return;
+    state.perPersonFee = parseFloat(e.target.value) || 0;
+    save(); render();
+  });
   document.getElementById('pix-input').addEventListener('change', e=>{
     if(!requireEditor()) return;
     state.pixKey = e.target.value.trim();
@@ -2142,6 +2149,7 @@ window.storage = {
         state = imported;
         setMonthInputValue();
         document.getElementById('fee-input').value = state.courtTotal || 750;
+        document.getElementById('per-person-input').value = state.perPersonFee || 30;
         document.getElementById('pix-input').value = state.pixKey || '119963717973';
         save();
         render();
@@ -2172,6 +2180,7 @@ window.storage = {
             state = incoming;
             document.getElementById('pix-input').value = state.pixKey || '119963717973';
             document.getElementById('fee-input').value = state.courtTotal || 750;
+            document.getElementById('per-person-input').value = state.perPersonFee || 30;
             render();
             if(document.getElementById('report-overlay').classList.contains('open')) buildReport();
             if(document.getElementById('caixa-overlay').classList.contains('open')) renderCaixaModal();
