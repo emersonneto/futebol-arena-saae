@@ -621,7 +621,7 @@
   </div>
 
   <div class="controls">
-    <input type="month" id="month-select" class="month-select">
+    <input type="month" id="month-select" class="month-select" min="2026-08">
     <div class="fee-field">
       <span class="fee-tag">Quadra R$</span>
       <input type="number" id="fee-input" class="edit-only" placeholder="750" style="width:90px;" min="0" step="10">
@@ -2038,7 +2038,12 @@ window.storage = {
   });
 
   document.getElementById('month-select').addEventListener('change', e=>{
-    currentMonth = e.target.value;
+    let value = e.target.value;
+    if(value && value < '2026-08'){
+      value = '2026-08';
+      e.target.value = value;
+    }
+    currentMonth = value;
     render();
   });
   document.getElementById('fee-input').addEventListener('change', e=>{
