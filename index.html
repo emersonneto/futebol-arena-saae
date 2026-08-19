@@ -759,6 +759,12 @@
           <span class="field-label">Descrição</span>
           <input type="text" id="caixa-descricao" placeholder="Ex: Pagou a mais, complemento da quadra...">
         </div>
+        <div class="full" id="caixa-cobertura-wrap" style="display:none;">
+          <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--chalk-dim);cursor:pointer;">
+            <input type="checkbox" id="caixa-cobertura-check" style="width:16px;height:16px;">
+            Contar como cobertura da quadra deste mês (soma no "Arrecadado" do relatório)
+          </label>
+        </div>
         <div class="full" style="display:flex;gap:8px;">
           <button class="btn-gold" id="add-caixa-btn">Lançar</button>
         </div>
@@ -1360,7 +1366,7 @@ window.storage = {
   function caixaUsadoNoMes(month){
     const m = month || currentMonth;
     return state.caixa
-      .filter(t => t.date === m && Number(t.value) < 0)
+      .filter(t => t.date === m && Number(t.value) < 0 && t.isCourtCover === true)
       .reduce((sum,t) => sum + Math.abs(Number(t.value)), 0);
   }
 
@@ -1592,7 +1598,8 @@ window.storage = {
           id: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
           value: -amount, playerId: null,
           description: 'Complemento automático — cobertura da quadra',
-          date: currentMonth, createdAt: Date.now()
+          date: currentMonth, createdAt: Date.now(),
+          isCourtCover: true
         });
         save(); render(); buildReport();
       });
@@ -1994,11 +2001,14 @@ window.storage = {
     caixaTipo = 'entrada';
     document.getElementById('caixa-tipo-entrada').classList.add('active');
     document.getElementById('caixa-tipo-saida').classList.remove('active');
+    document.getElementById('caixa-cobertura-wrap').style.display = 'none';
+    document.getElementById('caixa-cobertura-check').checked = false;
   });
   document.getElementById('caixa-tipo-saida').addEventListener('click', ()=>{
     caixaTipo = 'saida';
     document.getElementById('caixa-tipo-saida').classList.add('active');
     document.getElementById('caixa-tipo-entrada').classList.remove('active');
+    document.getElementById('caixa-cobertura-wrap').style.display = '';
   });
   document.getElementById('add-caixa-btn').addEventListener('click', ()=>{
     if(!requireEditor()) return;
@@ -2008,14 +2018,18 @@ window.storage = {
     const value = caixaTipo === 'saida' ? -Math.abs(raw) : Math.abs(raw);
     const playerId = document.getElementById('caixa-jogador').value;
     const description = document.getElementById('caixa-descricao').value.trim();
+    const isCourtCover = caixaTipo === 'saida' && document.getElementById('caixa-cobertura-check').checked;
     state.caixa.push({
       id: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
       value, playerId: playerId || null, description,
-      date: currentMonth, createdAt: Date.now()
+      date: currentMonth, createdAt: Date.now(),
+      isCourtCover
     });
     valorInput.value='';
     document.getElementById('caixa-descricao').value='';
     document.getElementById('caixa-jogador').value='';
+    document.getElementById('caixa-cobertura-check').checked = false;
+    document.getElementById('caixa-cobertura-wrap').style.display = 'none';
     caixaTipo = 'entrada';
     document.getElementById('caixa-tipo-entrada').classList.add('active');
     document.getElementById('caixa-tipo-saida').classList.remove('active');
