@@ -447,6 +447,12 @@
   .caixa-row .caixa-val.pos{color:var(--green-card);}
   .caixa-row .caixa-val.neg{color:var(--red-card);}
   .caixa-row .icon-btn{width:26px;height:26px;flex-shrink:0;}
+  .caixa-month-net{
+    font-size:12px;color:var(--chalk-dim);text-align:right;
+    padding:4px 10px 8px;
+  }
+  .caixa-month-net .pos{color:var(--green-card);font-weight:700;}
+  .caixa-month-net .neg{color:var(--red-card);font-weight:700;}
 
   .caixa-hist-row{
     display:flex;justify-content:space-between;align-items:center;
@@ -735,7 +741,7 @@
       </div>
 
       <div class="caixa-saldo">
-        <div class="caixa-saldo-label">Saldo disponível</div>
+        <div class="caixa-saldo-label">Saldo disponível (acumulado geral)</div>
         <div class="caixa-saldo-value" id="caixa-saldo-value">R$ 0,00</div>
       </div>
 
@@ -765,7 +771,7 @@
       </div>
 
       <div class="report-section">
-        <div class="report-section-title gold-title-screen">Histórico de lançamentos</div>
+        <div class="report-section-title gold-title-screen" id="caixa-lista-title">Histórico de lançamentos</div>
         <div id="caixa-lista" class="report-list"></div>
       </div>
     </div>
@@ -1399,13 +1405,21 @@ window.storage = {
 
     populateCaixaPlayerSelect();
 
+    const listTitleEl = document.getElementById('caixa-lista-title');
+    if(listTitleEl) listTitleEl.textContent = 'Lançamentos de ' + monthLabel(currentMonth);
+
     const listEl = document.getElementById('caixa-lista');
-    const items = [...state.caixa].sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
-    if(items.length === 0){
-      listEl.innerHTML = '<div class="report-empty">Nenhum lançamento ainda.</div>';
+    const monthItems = state.caixa
+      .filter(t => t.date === currentMonth)
+      .sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
+    if(monthItems.length === 0){
+      listEl.innerHTML = '<div class="report-empty">Nenhum lançamento em ' + monthLabel(currentMonth) + '.</div>';
       return;
     }
-    listEl.innerHTML = items.map(t=>{
+    const monthNet = monthItems.reduce((sum,t)=> sum + (Number(t.value)||0), 0);
+    listEl.innerHTML = `
+      <div class="caixa-month-net">Saldo do mês: <span class="${monthNet>=0?'pos':'neg'}">${monthNet>=0?'+':''}R$ ${monthNet.toFixed(2)}</span></div>
+    ` + monthItems.map(t=>{
       const player = state.players.find(p=>p.id===t.playerId);
       const val = Number(t.value)||0;
       const sign = val >= 0 ? '+' : '';
@@ -2032,6 +2046,9 @@ window.storage = {
     }
     currentMonth = value;
     render();
+    if(document.getElementById('caixa-overlay').classList.contains('open')) renderCaixaModal();
+    if(document.getElementById('avulso-overlay').classList.contains('open')) renderAvulsoModal();
+    if(document.getElementById('report-overlay').classList.contains('open')) buildReport();
   });
   document.getElementById('fee-input').addEventListener('change', e=>{
     if(!requireEditor()) return;
