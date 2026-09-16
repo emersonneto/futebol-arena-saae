@@ -1940,7 +1940,35 @@ window.storage = {
   document.getElementById('report-overlay').addEventListener('click', (e)=>{
     if(e.target.id === 'report-overlay') e.currentTarget.classList.remove('open');
   });
-  document.getElementById('print-report-btn').addEventListener('click', ()=> window.print());
+  document.getElementById('print-report-btn').addEventListener('click', ()=> preparePrintAndFire('report-overlay'));
+
+  function preparePrintAndFire(overlayId){
+    const overlay = document.getElementById(overlayId);
+    const modal = overlay ? overlay.querySelector('.modal') : null;
+    const forced = [];
+    function forceStyle(el, styles){
+      if(!el) return;
+      const prev = {};
+      Object.keys(styles).forEach(k=>{ prev[k] = el.style[k]; el.style[k] = styles[k]; });
+      forced.push({ el, prev });
+    }
+    forceStyle(overlay, { position:'static', overflow:'visible', height:'auto', maxHeight:'none', display:'block', padding:'0' });
+    forceStyle(modal, { position:'static', overflow:'visible', height:'auto', maxHeight:'none', maxWidth:'100%' });
+    overlay ? overlay.querySelectorAll('.report-list, .report-section, .caixa-lista, #report-historico, #report-caixa-historico, #report-avulso-list')
+      .forEach(el=> forceStyle(el, { overflow:'visible', height:'auto', maxHeight:'none' })) : null;
+
+    function restore(){
+      forced.forEach(({el, prev})=>{
+        Object.keys(prev).forEach(k=> el.style[k] = prev[k]);
+      });
+      window.removeEventListener('afterprint', restore);
+    }
+    window.addEventListener('afterprint', restore);
+    setTimeout(()=>{
+      window.print();
+      setTimeout(restore, 1000); // fallback for mobile browsers that skip afterprint
+    }, 50);
+  }
   document.getElementById('copy-report-btn').addEventListener('click', async ()=>{
     const txt = reportAsText();
     try{
